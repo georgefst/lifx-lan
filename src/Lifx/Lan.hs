@@ -44,6 +44,7 @@ data HSBK = HSBK
     }
 newtype Duration = Duration Word32
 
+-- | https://lan.developer.lifx.com/docs/changing-a-device
 data Message
     = SetColor HSBK Duration
 
