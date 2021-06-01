@@ -121,7 +121,7 @@ messageHeader mtarget = \case
 putMessagePayload :: Message -> Put
 putMessagePayload = \case
     SetPower b ->
-        putWord8 if b then maxBound else minBound
+        putWord16le if b then maxBound else minBound
     SetColor HSBK{..} (Duration d) -> do
         putWord8 0
         putWord16le hue
