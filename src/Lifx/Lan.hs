@@ -21,19 +21,20 @@ setCeilingLight brightness kelvin = do
         light = 0xd073d5554f4a0000
         -- day+dusk bulb doesn't support actual colours, so set ignored fields to 0
         colour = HSBK{hue = 0, saturation = 0, ..}
-    sendMessage light addr $ SetColor colour $ Duration 0
+    sendMessage (Just light) addr $ SetColor colour $ Duration 0
 
 {- Core -}
 
 lifxPort :: PortNumber
 lifxPort = 56700
 
-sendMessage :: Word64 -> HostAddress -> Message -> IO ()
+--TODO what is the purpose of including a target MAC?
+sendMessage :: Maybe Word64 -> HostAddress -> Message -> IO ()
 sendMessage light lightAddr msg = do
     --TODO use reader monad to avoid re-binding socket
     sock <- socket AF_INET Datagram defaultProtocol
     bind sock $ SockAddrInet defaultPort 0
-    void $ sendTo sock (BL.toStrict $ encodeMessage (Just light) msg) (SockAddrInet lifxPort lightAddr)
+    void $ sendTo sock (BL.toStrict $ encodeMessage light msg) (SockAddrInet lifxPort lightAddr)
 
 data HSBK = HSBK
     { hue :: Word16
@@ -102,7 +103,7 @@ messageHeader mtarget = \case
     headerSize = 36
     protocol = 1024
     tagged = isNothing mtarget --TODO is this right?
-    addressable = not tagged --TODO ditto
+    addressable = True
     origin = 0
     source = 2 --TODO make configurable
     resRequired = False
