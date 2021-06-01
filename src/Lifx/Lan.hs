@@ -48,6 +48,7 @@ newtype Duration = Duration Word32
 data Message
     = SetPower Bool
     | SetColor HSBK Duration
+    | SetLightPower Bool Duration
 
 {- Low level -}
 
@@ -106,6 +107,12 @@ messageHeader mtarget = \case
             , packetType = 102
             , ..
             }
+    SetLightPower{} ->
+        Header
+            { size = headerSize + 6
+            , packetType = 117
+            , ..
+            }
   where
     target = fromMaybe 0 mtarget
     headerSize = 36
@@ -128,4 +135,7 @@ putMessagePayload = \case
         putWord16le saturation
         putWord16le brightness
         putWord16le kelvin
+        putWord32le d
+    SetLightPower b (Duration d) -> do
+        putWord16le if b then maxBound else minBound
         putWord32le d
