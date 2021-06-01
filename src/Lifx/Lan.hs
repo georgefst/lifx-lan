@@ -12,16 +12,26 @@ import Network.Socket.ByteString
 {- Usage -}
 
 main :: IO ()
-main = setCeilingLight 28000 2300
+main = bedroomLightColour 28000 2300
 
-setCeilingLight :: Word16 -> Word16 -> IO ()
-setCeilingLight brightness kelvin = do
-    let addr = tupleToHostAddress (192, 168, 1, 190)
-        --TODO last 4 digits here must always be 0 - MAC is a Word48
-        light = 0xd073d5554f4a0000
-        -- day+dusk bulb doesn't support actual colours, so set ignored fields to 0
-        colour = HSBK{hue = 0, saturation = 0, ..}
-    sendMessage (Just light) addr $ SetColor colour $ Duration 0
+--TODO last 4 digits here must always be 0 - MAC is a Word48
+bedroomLightMac :: Word64
+bedroomLightMac = 0xd073d5554f4a0000
+bedroomLightAddr :: HostAddress
+bedroomLightAddr = tupleToHostAddress (192, 168, 1, 190)
+sendToBedroomLight :: Message -> IO ()
+sendToBedroomLight = sendMessage (Just bedroomLightMac) bedroomLightAddr
+
+bedroomLightColour :: Word16 -> Word16 -> IO ()
+bedroomLightColour brightness kelvin =
+    sendToBedroomLight $ SetColor colour $ Duration 0
+  where
+    -- day+dusk bulb doesn't support actual colours, so set ignored fields to 0
+    colour = HSBK{hue = 0, saturation = 0, ..}
+bedroomLightOn :: IO ()
+bedroomLightOn = sendToBedroomLight $ SetPower True
+bedroomLightOff :: IO ()
+bedroomLightOff = sendToBedroomLight $ SetPower False
 
 {- Core -}
 
