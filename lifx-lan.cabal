@@ -23,6 +23,7 @@ library
         monad-loops ^>= 0.4.3,
         mtl ^>= 2.2.2,
         network ^>= 3.1.1.1,
+        random ^>= 1.2.0,
         safe ^>= 0.3.19,
         text ^>= 1.2.3,
         time ^>= 1.9.3,

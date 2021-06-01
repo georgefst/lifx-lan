@@ -1,12 +1,16 @@
 module Lifx.Lan where
 
 import Control.Monad
+import Control.Monad.Reader
+import Control.Monad.State
 import Data.Binary
 import Data.Binary.Put
 import Data.Bits
 import Data.ByteString.Lazy qualified as BL
+import Data.Tuple.Extra
 import Network.Socket
 import Network.Socket.ByteString
+import System.Random
 
 {- Usage -}
 
@@ -25,19 +29,22 @@ bedroomLightOff :: IO ()
 bedroomLightOff = sendToBedroomLight $ SetPower False
 
 sendToBedroomLight :: Message -> IO ()
-sendToBedroomLight = sendMessage $ tupleToHostAddress (192, 168, 1, 190)
+sendToBedroomLight = runLifx . sendMessage (tupleToHostAddress (192, 168, 1, 190))
 
 {- Core -}
 
 lifxPort :: PortNumber
 lifxPort = 56700
 
-sendMessage :: HostAddress -> Message -> IO ()
+sendMessage :: HostAddress -> Message -> Lifx ()
 sendMessage lightAddr msg = do
-    --TODO use reader monad to avoid re-binding socket
-    sock <- socket AF_INET Datagram defaultProtocol
-    bind sock $ SockAddrInet defaultPort 0
-    void $ sendTo sock (BL.toStrict $ encodeMessage False msg) (SockAddrInet lifxPort lightAddr)
+    (sock, source) <- ask
+    sequenceCounter <- state $ succ' &&& id
+    void . liftIO $
+        sendTo
+            sock
+            (BL.toStrict $ encodeMessage False sequenceCounter source msg)
+            (SockAddrInet lifxPort lightAddr)
 
 data HSBK = HSBK
     { hue :: Word16
@@ -53,10 +60,23 @@ data Message
     | SetColor HSBK Duration
     | SetLightPower Bool Duration
 
+{- Monad -}
+
+newtype Lifx a = Lifx {unLifx :: StateT Word8 (ReaderT (Socket, Word32) IO) a}
+    deriving newtype (Functor, Applicative, Monad, MonadIO, MonadReader (Socket, Word32), MonadState Word8)
+
+runLifx :: Lifx a -> IO a
+runLifx (Lifx x) = do
+    sock <- socket AF_INET Datagram defaultProtocol
+    bind sock $ SockAddrInet defaultPort 0
+    source <- randomIO
+    runReaderT (evalStateT x 0) (sock, source)
+
 {- Low level -}
 
-encodeMessage :: Bool -> Message -> BL.ByteString
-encodeMessage ackRequired msg = runPut $ putHeader (messageHeader ackRequired msg) >> putMessagePayload msg
+encodeMessage :: Bool -> Word8 -> Word32 -> Message -> BL.ByteString
+encodeMessage ackRequired sequenceCounter source msg =
+    runPut $ putHeader (messageHeader ackRequired sequenceCounter source msg) >> putMessagePayload msg
 
 -- | https://lan.developer.lifx.com/docs/encoding-a-packet
 data Header = Header
@@ -96,8 +116,8 @@ putHeader Header{..} = do
   where
     bitIf b n = if b then bit n else zeroBits
 
-messageHeader :: Bool -> Message -> Header
-messageHeader ackRequired = \case
+messageHeader :: Bool -> Word8 -> Word32 -> Message -> Header
+messageHeader ackRequired sequenceCounter source = \case
     SetPower{} ->
         Header
             { size = headerSize + 2
@@ -123,9 +143,7 @@ messageHeader ackRequired = \case
     tagged = True
     addressable = True
     origin = 0
-    source = 2 --TODO make configurable
     resRequired = False
-    sequenceCounter = 1 --TODO increment (requires state monad)
 
 putMessagePayload :: Message -> Put
 putMessagePayload = \case
@@ -141,3 +159,11 @@ putMessagePayload = \case
     SetLightPower b (Duration d) -> do
         putWord16le if b then maxBound else minBound
         putWord32le d
+
+{- Util -}
+
+-- | Safe, wraparound variant of 'succ'.
+succ' :: (Eq a, Bounded a, Enum a) => a -> a
+succ' e
+    | e == maxBound = minBound
+    | otherwise = succ e
