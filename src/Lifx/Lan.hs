@@ -46,7 +46,8 @@ newtype Duration = Duration Word32
 
 -- | https://lan.developer.lifx.com/docs/changing-a-device
 data Message
-    = SetColor HSBK Duration
+    = SetPower Bool
+    | SetColor HSBK Duration
 
 {- Low level -}
 
@@ -93,6 +94,12 @@ putHeader Header{..} = do
 
 messageHeader :: Maybe Word64 -> Message -> Header
 messageHeader mtarget = \case
+    SetPower{} ->
+        Header
+            { size = headerSize + 2
+            , packetType = 21
+            , ..
+            }
     SetColor{} ->
         Header
             { size = headerSize + 13 --TODO calculate size of each message?
@@ -113,6 +120,8 @@ messageHeader mtarget = \case
 
 putMessagePayload :: Message -> Put
 putMessagePayload = \case
+    SetPower b ->
+        putWord8 if b then maxBound else minBound
     SetColor HSBK{..} (Duration d) -> do
         putWord8 0
         putWord16le hue
