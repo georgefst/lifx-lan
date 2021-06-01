@@ -14,14 +14,6 @@ import Network.Socket.ByteString
 main :: IO ()
 main = bedroomLightColour 28000 2300
 
---TODO last 4 digits here must always be 0 - MAC is a Word48
-bedroomLightMac :: Word64
-bedroomLightMac = 0xd073d5554f4a0000
-bedroomLightAddr :: HostAddress
-bedroomLightAddr = tupleToHostAddress (192, 168, 1, 190)
-sendToBedroomLight :: Message -> IO ()
-sendToBedroomLight = sendMessage (Just bedroomLightMac) bedroomLightAddr
-
 bedroomLightColour :: Word16 -> Word16 -> IO ()
 bedroomLightColour brightness kelvin =
     sendToBedroomLight $ SetColor colour $ Duration 0
@@ -32,6 +24,9 @@ bedroomLightOn :: IO ()
 bedroomLightOn = sendToBedroomLight $ SetPower True
 bedroomLightOff :: IO ()
 bedroomLightOff = sendToBedroomLight $ SetPower False
+
+sendToBedroomLight :: Message -> IO ()
+sendToBedroomLight = sendMessage Nothing $ tupleToHostAddress (192, 168, 1, 190)
 
 {- Core -}
 
