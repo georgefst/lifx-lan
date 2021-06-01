@@ -5,7 +5,6 @@ import Data.Binary
 import Data.Binary.Put
 import Data.Bits
 import Data.ByteString.Lazy qualified as BL
-import Data.Maybe
 import Network.Socket
 import Network.Socket.ByteString
 
@@ -26,20 +25,19 @@ bedroomLightOff :: IO ()
 bedroomLightOff = sendToBedroomLight $ SetPower False
 
 sendToBedroomLight :: Message -> IO ()
-sendToBedroomLight = sendMessage Nothing $ tupleToHostAddress (192, 168, 1, 190)
+sendToBedroomLight = sendMessage $ tupleToHostAddress (192, 168, 1, 190)
 
 {- Core -}
 
 lifxPort :: PortNumber
 lifxPort = 56700
 
---TODO what is the purpose of including a target MAC?
-sendMessage :: Maybe Word64 -> HostAddress -> Message -> IO ()
-sendMessage light lightAddr msg = do
+sendMessage :: HostAddress -> Message -> IO ()
+sendMessage lightAddr msg = do
     --TODO use reader monad to avoid re-binding socket
     sock <- socket AF_INET Datagram defaultProtocol
     bind sock $ SockAddrInet defaultPort 0
-    void $ sendTo sock (BL.toStrict $ encodeMessage light msg) (SockAddrInet lifxPort lightAddr)
+    void $ sendTo sock (BL.toStrict $ encodeMessage False msg) (SockAddrInet lifxPort lightAddr)
 
 data HSBK = HSBK
     { hue :: Word16
@@ -57,8 +55,8 @@ data Message
 
 {- Low level -}
 
-encodeMessage :: Maybe Word64 -> Message -> BL.ByteString
-encodeMessage target msg = runPut $ putHeader (messageHeader target msg) >> putMessagePayload msg
+encodeMessage :: Bool -> Message -> BL.ByteString
+encodeMessage ackRequired msg = runPut $ putHeader (messageHeader ackRequired msg) >> putMessagePayload msg
 
 -- | https://lan.developer.lifx.com/docs/encoding-a-packet
 data Header = Header
@@ -98,8 +96,8 @@ putHeader Header{..} = do
   where
     bitIf b n = if b then bit n else zeroBits
 
-messageHeader :: Maybe Word64 -> Message -> Header
-messageHeader mtarget = \case
+messageHeader :: Bool -> Message -> Header
+messageHeader ackRequired = \case
     SetPower{} ->
         Header
             { size = headerSize + 2
@@ -108,7 +106,7 @@ messageHeader mtarget = \case
             }
     SetColor{} ->
         Header
-            { size = headerSize + 13 --TODO calculate size of each message?
+            { size = headerSize + 13
             , packetType = 102
             , ..
             }
@@ -119,15 +117,14 @@ messageHeader mtarget = \case
             , ..
             }
   where
-    target = fromMaybe 0 mtarget
+    target = 0
     headerSize = 36
     protocol = 1024
-    tagged = isNothing mtarget --TODO is this right?
+    tagged = True
     addressable = True
     origin = 0
     source = 2 --TODO make configurable
     resRequired = False
-    ackRequired = False --TODO make configurable (when we have logic for receiving responses)
     sequenceCounter = 1 --TODO increment (requires state monad)
 
 putMessagePayload :: Message -> Put
