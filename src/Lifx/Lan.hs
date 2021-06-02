@@ -7,7 +7,6 @@ import Data.Binary
 import Data.Binary.Put
 import Data.Bits
 import Data.ByteString.Lazy qualified as BL
-import Data.Tuple.Extra
 import GHC.Generics (Generic)
 import Network.Socket
 import Network.Socket.ByteString
@@ -18,10 +17,12 @@ import System.Random
 lifxPort :: PortNumber
 lifxPort = 56700
 
-sendMessage :: HostAddress -> Message -> Lifx ()
+sendMessage :: MonadLifx m => HostAddress -> Message -> m ()
 sendMessage lightAddr msg = do
-    (sock, source) <- ask
-    sequenceCounter <- state $ succ' &&& id
+    sock <- getSocket
+    source <- getSource
+    sequenceCounter <- getCounter
+    incrementCounter
     void . liftIO $
         sendTo
             sock
@@ -46,15 +47,39 @@ data Message
 
 {- Monad -}
 
-newtype Lifx a = Lifx {unLifx :: StateT Word8 (ReaderT (Socket, Word32) IO) a}
+type Lifx = LifxT IO
+newtype LifxT m a = LifxT {unLifxT :: StateT Word8 (ReaderT (Socket, Word32) m) a}
     deriving newtype (Functor, Applicative, Monad, MonadIO, MonadReader (Socket, Word32), MonadState Word8)
 
 runLifx :: Lifx a -> IO a
-runLifx (Lifx x) = do
-    sock <- socket AF_INET Datagram defaultProtocol
-    bind sock $ SockAddrInet defaultPort 0
+runLifx = runLifxT
+runLifxT :: MonadIO m => LifxT m a -> m a
+runLifxT (LifxT x) = do
+    sock <- liftIO $ socket AF_INET Datagram defaultProtocol
+    liftIO . bind sock $ SockAddrInet defaultPort 0
     source <- randomIO
     runReaderT (evalStateT x 0) (sock, source)
+
+class MonadIO m => MonadLifx m where
+    getSocket :: m Socket
+    getSource :: m Word32
+    incrementCounter :: m ()
+    getCounter :: m Word8
+instance MonadIO m => MonadLifx (LifxT m) where
+    getSocket = asks fst
+    getSource = asks snd
+    incrementCounter = modify succ'
+    getCounter = gets id
+instance MonadLifx m => MonadLifx (StateT s m) where
+    getSocket = lift getSocket
+    getSource = lift getSource
+    incrementCounter = lift incrementCounter
+    getCounter = lift getCounter
+instance MonadLifx m => MonadLifx (ReaderT e m) where
+    getSocket = lift getSocket
+    getSource = lift getSource
+    incrementCounter = lift incrementCounter
+    getCounter = lift getCounter
 
 {- Low level -}
 
