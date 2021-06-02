@@ -25,6 +25,8 @@ don't hardcode stuff under `Config` header
 allow switching between multiple lights
 we recreate and bind socket on each update
     really we need Gloss to be able to work in any `MonadIO`
+port to gtk
+    difficulty installing on Mac
 dependency bounds
 move this to its own repository
     wait until lib is on Hackage
