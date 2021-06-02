@@ -116,10 +116,4 @@ interactM ::
     (Event -> m ()) ->
     (Controller -> IO ()) ->
     IO ()
-interactM trans displayMode backgroundColor initialState viewer updater =
-    interactIO
-        displayMode
-        backgroundColor
-        initialState
-        viewer
-        (fmap snd .: (trans . updater))
+interactM trans d c s v u = interactIO d c s v (fmap snd .: (trans . u))
