@@ -12,25 +12,6 @@ import Network.Socket
 import Network.Socket.ByteString
 import System.Random
 
-{- Usage -}
-
-main :: IO ()
-main = bedroomLightColour 28000 2300
-
-bedroomLightColour :: Word16 -> Word16 -> IO ()
-bedroomLightColour brightness kelvin =
-    sendToBedroomLight $ SetColor colour $ Duration 0
-  where
-    -- day+dusk bulb doesn't support actual colours, so set ignored fields to 0
-    colour = HSBK{hue = 0, saturation = 0, ..}
-bedroomLightOn :: IO ()
-bedroomLightOn = sendToBedroomLight $ SetPower True
-bedroomLightOff :: IO ()
-bedroomLightOff = sendToBedroomLight $ SetPower False
-
-sendToBedroomLight :: Message -> IO ()
-sendToBedroomLight = runLifx . sendMessage (tupleToHostAddress (192, 168, 1, 190))
-
 {- Core -}
 
 lifxPort :: PortNumber
