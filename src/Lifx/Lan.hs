@@ -5,7 +5,7 @@ module Lifx.Lan (
     Duration (..),
     Lifx,
     runLifx,
-    LifxT,
+    LifxT (..),
     runLifxT,
     MonadLifx (..),
 
