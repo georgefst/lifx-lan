@@ -122,4 +122,4 @@ interactM trans displayMode backgroundColor initialState viewer updater =
         backgroundColor
         initialState
         viewer
-        (\ev s -> fmap snd . flip trans s $ updater ev)
+        (fmap snd .: (trans . updater))
