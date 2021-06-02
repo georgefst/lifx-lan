@@ -8,6 +8,7 @@ import Data.Binary.Put
 import Data.Bits
 import Data.ByteString.Lazy qualified as BL
 import Data.Tuple.Extra
+import GHC.Generics (Generic)
 import Network.Socket
 import Network.Socket.ByteString
 import System.Random
@@ -33,7 +34,9 @@ data HSBK = HSBK
     , brightness :: Word16
     , kelvin :: Word16
     }
+    deriving (Eq, Ord, Show, Generic)
 newtype Duration = Duration Word32
+    deriving (Eq, Ord, Show, Generic)
 
 -- | https://lan.developer.lifx.com/docs/changing-a-device
 data Message
