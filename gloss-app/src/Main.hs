@@ -1,6 +1,9 @@
 module Main (main) where
 
+import Control.Monad.Reader
 import Control.Monad.State
+import Data.Bifunctor
+import Data.Composition
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
@@ -23,8 +26,6 @@ periodically request light state
 react to window resizing
 don't hardcode stuff under `Config` header
 allow switching between multiple lights
-we recreate and bind socket on each update
-    really we need Gloss to be able to work in any `MonadIO`
 port to gtk
     difficulty installing on Mac
 dependency bounds
@@ -45,13 +46,16 @@ data AppState = AppState
     deriving (Show, Generic)
 
 main :: IO ()
-main =
-    interactIO
+main = do
+    es0 <- runLifx $ ((,) .: (,)) <$> getSocket <*> getSource <*> getCounter
+    interactM
+        es0
+        (\(LifxT x) (e, s) -> second (e,) <$> runReaderT (runStateT x s) e)
         (InWindow "LIFX" (windowWidth, windowHeight) (10, 10))
         white
         (AppState (HSBK 0 0 30_000 2_500) Nothing)
         (pure . render)
-        (\e -> runLifx . execStateT (update e))
+        (execStateT . update)
         mempty
 
 render :: AppState -> Picture
@@ -101,3 +105,22 @@ text' spacing =
 
 clamp :: (Ord a) => (a, a) -> a -> a
 clamp (l, u) = max l . min u
+
+-- | Like 'interactIO', but in an arbitrary 'State'-like monad (except the 'Controller' handler).
+interactM ::
+    s ->
+    (forall a. m a -> s -> IO (a, s)) ->
+    Display ->
+    Graphics.Gloss.Color ->
+    world ->
+    (world -> m Picture) ->
+    (Event -> world -> m world) ->
+    (Controller -> IO ()) ->
+    IO ()
+interactM s0 trans displayMode backgroundColor initialState viewer updater =
+    interactIO
+        displayMode
+        backgroundColor
+        (initialState, s0)
+        (\(world, s) -> fmap fst . flip trans s $ viewer world)
+        (\e (world, s) -> flip trans s $ updater e world)
