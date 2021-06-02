@@ -2,7 +2,6 @@ module Main (main) where
 
 import Control.Monad.Reader
 import Control.Monad.State
-import Data.Bifunctor
 import Data.Composition
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -47,16 +46,17 @@ data AppState = AppState
 
 main :: IO ()
 main = do
-    es0 <- runLifx $ ((,) .: (,)) <$> getSocket <*> getSource <*> getCounter
+    (e, s0) <- runLifx $ ((,) .: (,)) <$> getSocket <*> getSource <*> getCounter
     interactM
-        es0
-        (\(LifxT x) (e, s) -> second (e,) <$> runReaderT (runStateT x s) e)
+        (\x (a, (_e, s)) -> f e <$> runReaderT (runStateT (unLifxT (runStateT x a)) s) e)
         (InWindow "LIFX" (windowWidth, windowHeight) (10, 10))
         white
-        (AppState (HSBK 0 0 30_000 2_500) Nothing)
-        (pure . render)
-        (execStateT . update)
+        (AppState (HSBK 0 0 30_000 2_500) Nothing, (e, s0))
+        (pure . render . fst)
+        update
         mempty
+  where
+    f a ((b, c), d) = (b, (c, (a, d)))
 
 render :: AppState -> Picture
 render s = translate (-220) 80 . scale 0.2 0.2 . text' 150 . TL.toStrict $ pShowNoColor s
@@ -106,21 +106,20 @@ text' spacing =
 clamp :: (Ord a) => (a, a) -> a -> a
 clamp (l, u) = max l . min u
 
--- | Like 'interactIO', but in an arbitrary 'State'-like monad (except the 'Controller' handler).
+-- | Like 'interactIO', but with the update function in an arbitrary `StateT s IO`-like monad.
 interactM ::
-    s ->
     (forall a. m a -> s -> IO (a, s)) ->
     Display ->
     Graphics.Gloss.Color ->
-    world ->
-    (world -> m Picture) ->
-    (Event -> world -> m world) ->
+    s ->
+    (s -> IO Picture) ->
+    (Event -> m ()) ->
     (Controller -> IO ()) ->
     IO ()
-interactM s0 trans displayMode backgroundColor initialState viewer updater =
+interactM trans displayMode backgroundColor initialState viewer updater =
     interactIO
         displayMode
         backgroundColor
-        (initialState, s0)
-        (\(world, s) -> fmap fst . flip trans s $ viewer world)
-        (\e (world, s) -> flip trans s $ updater e world)
+        initialState
+        viewer
+        (\ev s -> fmap snd . flip trans s $ updater ev)
