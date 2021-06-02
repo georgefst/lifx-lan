@@ -1,3 +1,5 @@
 Bindings to the LIFX LAN API.
 
-Currently very basic. No error-handling, for example - we assume all UDP messages will send successfully.
+Currently very basic:
+- Only supports setting power and colour.
+- No error-handling - we assume all UDP messages will send successfully.

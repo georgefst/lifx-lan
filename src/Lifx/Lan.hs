@@ -1,4 +1,18 @@
-module Lifx.Lan where
+module Lifx.Lan (
+    sendMessage,
+    Message (..),
+    HSBK (..),
+    Duration (..),
+    Lifx,
+    runLifx,
+    LifxT,
+    runLifxT,
+    MonadLifx (..),
+
+    -- * Low-level
+    encodeMessage,
+    Header (..),
+) where
 
 import Control.Monad
 import Control.Monad.Reader
