@@ -89,7 +89,7 @@ bedroomLightAddr = tupleToHostAddress (192, 168, 1, 190)
 
 {- Util -}
 
--- like 'text' but reflects newlines
+-- | Like 'text' but reflects newlines.
 text' :: Float -> Text -> Picture
 text' spacing =
     pictures
