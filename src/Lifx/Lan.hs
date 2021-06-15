@@ -151,9 +151,6 @@ newtype LifxT m a = LifxT
         , Applicative
         , Monad
         , MonadIO
-        , MonadError LifxError
-        , MonadReader (Socket, Word32)
-        , MonadState Word8
         )
 
 runLifx :: Lifx a -> IO (Either LifxError a)
@@ -172,11 +169,11 @@ class MonadIO m => MonadLifx m where
     getCounter :: m Word8
     lifxThrow :: LifxError -> m a
 instance MonadIO m => MonadLifx (LifxT m) where
-    getSocket = asks fst
-    getSource = asks snd
-    incrementCounter = modify succ'
-    getCounter = gets id
-    lifxThrow = throwError
+    getSocket = LifxT $ asks fst
+    getSource = LifxT $ asks snd
+    incrementCounter = LifxT $ modify succ'
+    getCounter = LifxT $ gets id
+    lifxThrow = LifxT . throwError
 instance MonadLifx m => MonadLifx (StateT s m) where
     getSocket = lift getSocket
     getSource = lift getSource
