@@ -31,6 +31,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Function
 import GHC.Generics (Generic)
+import GHC.IO.Exception
 import Network.Socket
 import Network.Socket.ByteString
 import System.Random
@@ -153,8 +154,22 @@ newtype LifxT m a = LifxT
         , MonadIO
         )
 
-runLifx :: Lifx a -> IO (Either LifxError a)
-runLifx = runLifxT
+-- | Note that this throws 'LifxError's as 'IOError's. Use 'runLifxT' to control error handling.
+runLifx :: Lifx a -> IO a
+runLifx m =
+    runLifxT m >>= \case
+        Left e ->
+            ioError
+                IOError
+                    { ioe_handle = Nothing
+                    , ioe_type = OtherError
+                    , ioe_location = "LIFX"
+                    , ioe_description = show e
+                    , ioe_errno = Nothing
+                    , ioe_filename = Nothing
+                    }
+        Right x -> pure x
+
 runLifxT :: MonadIO m => LifxT m a -> m (Either LifxError a)
 runLifxT (LifxT x) = do
     sock <- liftIO $ socket AF_INET Datagram defaultProtocol
