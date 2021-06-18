@@ -1,6 +1,5 @@
 module Lifx.Lan (
     sendMessage,
-    broadcastMessage,
     discoverDevices,
     Message (..),
     HSBK (..),
@@ -38,8 +37,12 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Either.Extra
 import Data.Fixed
 import Data.Function
+import Data.Functor
+import Data.List.NonEmpty (NonEmpty)
+import Data.Map (Map)
+import Data.Map.Strict qualified as Map
+import Data.Maybe
 import Data.Time
-import Data.Traversable
 import Data.Tuple.Extra
 import GHC.Generics (Generic)
 import GHC.IO.Exception
@@ -88,9 +91,15 @@ sendMessage lightAddr msg = do
             Left e -> lifxThrow e
             Right r -> pure r
 
--- | If an integer argument is given, wait until we have that number of responses. Otherwise keep waiting until timeout.
-broadcastMessage :: MonadLifx m => Maybe Int -> Message a -> m [(SockAddr, a)]
-broadcastMessage nDevices msg = do
+broadcastMessage ::
+    MonadLifx m =>
+    -- | Discard messages which don't pass this predicate.
+    (SockAddr -> a -> m Bool) ->
+    -- | Return once this predicate over received messages passes. Otherwise just keep waiting until timeout.
+    Maybe (Map SockAddr (NonEmpty a) -> Bool) ->
+    Message a ->
+    m (Map SockAddr (NonEmpty a))
+broadcastMessage filter' maybeFinished msg = do
     sock <- getSocket
     liftIO $ setSocketOption sock Broadcast 1
     source <- getSource
@@ -104,41 +113,48 @@ broadcastMessage nDevices msg = do
             (BL.toStrict $ encodeMessage False False counter source msg)
             receiver
     liftIO $ setSocketOption sock Broadcast 0
-    getResponse' msg & either (pure . pure . (receiver,)) \(expectedPacketType, messageSize, getBody) -> do
-        responses <- case nDevices of
-            Just n ->
-                throwEither . fmap (maybeToEither NotEnoughDevicesFound) . liftIO . timeout timeoutDuration
-                    . replicateM n
-                    . recvFrom sock
-                    $ headerSize + messageSize
-            Nothing ->
-                liftIO . repeatForDuration timeoutDuration
-                    . recvFrom sock
-                    $ headerSize + messageSize
-        for responses \(bs, sender) -> do
-            case runGetOrFail get $ BL.fromStrict bs of
-                Left e -> throwDecodeFailure e
-                Right (bs', _, Header{packetType, sequenceCounter}) -> do
-                    when (sequenceCounter /= counter) $ lifxThrow $ WrongSequenceNumber counter sequenceCounter
-                    when (packetType /= expectedPacketType) $ lifxThrow $ WrongPacketType packetType expectedPacketType
-                    case runGetOrFail getBody bs' of
-                        Left e -> throwDecodeFailure e
-                        Right (_, _, res) -> pure (sender, res)
+    getResponse' msg & either (pure . Map.singleton receiver . pure) \(expectedPacketType, messageSize, getBody) -> do
+        t0 <- liftIO getCurrentTime
+        flip execStateT Map.empty $ untilM do
+            t <- liftIO getCurrentTime
+            let timeLeft = timeoutDuration - nominalDiffTimeToMicroSeconds (diffUTCTime t t0)
+            if timeLeft < 0
+                then pure False
+                else
+                    (liftIO . timeout timeLeft . recvFrom sock $ headerSize + messageSize) >>= \case
+                        Just (bs, addr) -> do
+                            x <- case runGetOrFail get $ BL.fromStrict bs of
+                                Left e -> throwDecodeFailure e
+                                Right (bs', _, Header{packetType, sequenceCounter}) -> do
+                                    when (sequenceCounter /= counter) . lifxThrow $
+                                        WrongSequenceNumber counter sequenceCounter
+                                    when (packetType /= expectedPacketType) . lifxThrow $
+                                        WrongPacketType packetType expectedPacketType
+                                    case runGetOrFail getBody bs' of
+                                        Left e -> throwDecodeFailure e
+                                        Right (_, _, res) -> pure res
+                            b <- lift $ filter' addr x
+                            when b . modify $ Map.insertWith (<>) addr (pure x)
+                            maybe (pure False) gets maybeFinished
+                        Nothing -> do
+                            -- if we were waiting for a predicate to pass, then we've timed out
+                            when (isJust maybeFinished) $ lifxThrow . BroadcastTimeout =<< gets Map.keys
+                            pure True
   where
     throwDecodeFailure (bs, bo, e) = lifxThrow $ DecodeFailure (BL.toStrict bs) bo e
-    throwEither x =
-        x >>= \case
-            Left e -> lifxThrow e
-            Right r -> pure r
 
+{- | If an integer argument is given, wait until we have responses from that number of devices.
+Otherwise just keep waiting until timeout.
+-}
 discoverDevices :: MonadLifx m => Maybe Int -> m [HostAddress]
-discoverDevices nDevices =
-    broadcastMessage nDevices GetService >>= mapMaybeM \(addr, StateService{service}) -> do
-        if service == ServiceUDP
-            then case addr of
-                SockAddrInet port ha | port == lifxPort -> pure $ Just ha
-                _ -> lifxThrow $ UnexpectedSockAddrType addr
-            else pure Nothing
+discoverDevices nDevices = do
+    traverse getHostAddr . Map.keys =<< broadcastMessage f p GetService
+  where
+    getHostAddr = \case
+        SockAddrInet port ha | port == lifxPort -> pure ha
+        addr -> lifxThrow $ UnexpectedSockAddrType addr
+    f _addr StateService{..} = pure $ service == ServiceUDP
+    p = nDevices <&> \n -> (>= n) . length
 
 data HSBK = HSBK
     { hue :: Word16
@@ -187,7 +203,7 @@ data LightState = LightState
 data LifxError
     = DecodeFailure BS.ByteString ByteOffset String
     | RecvTimeout
-    | NotEnoughDevicesFound
+    | BroadcastTimeout [SockAddr] -- contains the addresses which we have received responses from
     | WrongPacketType Word16 Word16 -- expected, then actual
     | WrongSender SockAddr SockAddr -- expected, then actual
     | WrongSequenceNumber Word8 Word8 -- expected, then actual
@@ -465,26 +481,12 @@ succ' e
 headerSize :: Num a => a
 headerSize = 36
 
-{- | Keep performing the action until the given number of microseconds have passed.
-The inner action will be interrupted when time has passed, rather than being allowed to finish.
-Most recent result is first in the list.
--}
-repeatForDuration :: Int -> IO a -> IO [a]
-repeatForDuration d x = do
-    t0 <- liftIO getCurrentTime
-    let go rs = do
-            t <- liftIO getCurrentTime
-            let timeLeft = d - nominalDiffTimeToMicroSeconds (diffUTCTime t t0)
-            if timeLeft < 0
-                then pure rs
-                else
-                    timeout timeLeft x >>= \case
-                        Nothing -> pure rs
-                        Just r -> go $ r : rs
-    go []
-
 -- | For use with 'timeout', 'threadDelay' etc.
 nominalDiffTimeToMicroSeconds :: NominalDiffTime -> Int
 nominalDiffTimeToMicroSeconds t = fromInteger $ p `div` 1_000_000
   where
     MkFixed p = nominalDiffTimeToSeconds t
+
+-- | Inverted 'whileM'.
+untilM :: Monad m => m Bool -> m ()
+untilM = whileM . fmap not
