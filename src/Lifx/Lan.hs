@@ -31,6 +31,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Either.Extra
 import Data.Function
+import Data.Tuple.Extra
 import GHC.Generics (Generic)
 import GHC.IO.Exception
 import Network.Socket
@@ -47,6 +48,7 @@ sendMessage :: MonadLifx m => HostAddress -> Message a -> m a
 sendMessage lightAddr msg = do
     sock <- getSocket
     source <- getSource
+    timeoutDuration <- getTimeout
     counter <- getCounter
     incrementCounter
     let receiver = SockAddrInet lifxPort lightAddr
@@ -58,7 +60,7 @@ sendMessage lightAddr msg = do
     getResponse' msg & either pure \(expectedPacketType, messageSize, getBody) -> do
         (bs, sender) <-
             throwEither . liftIO . fmap (maybeToEither RecvTimeout)
-                . timeout 5_000_000
+                . timeout timeoutDuration
                 . recvFrom sock
                 $ headerSize + messageSize
         when (sender /= receiver) $ lifxThrow $ WrongSender receiver sender
@@ -150,7 +152,7 @@ newtype LifxT m a = LifxT
         StateT
             Word8
             ( ReaderT
-                (Socket, Word32)
+                (Socket, Word32, Int)
                 ( ExceptT
                     LifxError
                     m
@@ -165,10 +167,12 @@ newtype LifxT m a = LifxT
         , MonadIO
         )
 
--- | Note that this throws 'LifxError's as 'IOError's. Use 'runLifxT' to control error handling.
+{- | Note that this throws 'LifxError's as 'IOError's, and sets timeout to 1 second.
+Use 'runLifxT' for more control.
+-}
 runLifx :: Lifx a -> IO a
 runLifx m =
-    runLifxT m >>= \case
+    runLifxT 1_000_000 m >>= \case
         Left e ->
             ioError
                 IOError
@@ -181,34 +185,38 @@ runLifx m =
                     }
         Right x -> pure x
 
-runLifxT :: MonadIO m => LifxT m a -> m (Either LifxError a)
-runLifxT (LifxT x) = do
+runLifxT :: MonadIO m => Int -> LifxT m a -> m (Either LifxError a)
+runLifxT timeoutDuration (LifxT x) = do
     sock <- liftIO $ socket AF_INET Datagram defaultProtocol
     liftIO . bind sock $ SockAddrInet defaultPort 0
     source <- randomIO
-    runExceptT $ runReaderT (evalStateT x 0) (sock, source)
+    runExceptT $ runReaderT (evalStateT x 0) (sock, source, timeoutDuration)
 
 class MonadIO m => MonadLifx m where
     getSocket :: m Socket
     getSource :: m Word32
+    getTimeout :: m Int
     incrementCounter :: m ()
     getCounter :: m Word8
     lifxThrow :: LifxError -> m a
 instance MonadIO m => MonadLifx (LifxT m) where
-    getSocket = LifxT $ asks fst
-    getSource = LifxT $ asks snd
+    getSocket = LifxT $ asks fst3
+    getSource = LifxT $ asks snd3
+    getTimeout = LifxT $ asks thd3
     incrementCounter = LifxT $ modify succ'
     getCounter = LifxT $ gets id
     lifxThrow = LifxT . throwError
 instance MonadLifx m => MonadLifx (StateT s m) where
     getSocket = lift getSocket
     getSource = lift getSource
+    getTimeout = lift getTimeout
     incrementCounter = lift incrementCounter
     getCounter = lift getCounter
     lifxThrow = lift . lifxThrow
 instance MonadLifx m => MonadLifx (ReaderT e m) where
     getSocket = lift getSocket
     getSource = lift getSource
+    getTimeout = lift getTimeout
     incrementCounter = lift incrementCounter
     getCounter = lift getCounter
     lifxThrow = lift . lifxThrow
