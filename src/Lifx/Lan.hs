@@ -95,17 +95,20 @@ data Message a where
     GetColor :: Message LightState
     SetColor :: HSBK -> Duration -> Message ()
     SetLightPower :: Bool -> Duration -> Message ()
+deriving instance (Eq (Message a))
+deriving instance (Ord (Message a))
+deriving instance (Show (Message a))
 
 newtype StatePower = StatePower
     { power :: Word16
     }
-    deriving (Show)
+    deriving (Eq, Ord, Show, Generic)
 data LightState = LightState
     { hsbk :: HSBK
     , power :: Word16
     , label :: BS.ByteString
     }
-    deriving (Show)
+    deriving (Eq, Ord, Show, Generic)
 
 data LifxError
     = DecodeFailure BS.ByteString ByteOffset String
@@ -113,7 +116,7 @@ data LifxError
     | WrongPacketType Word16 Word16 -- expected, then actual
     | WrongSender SockAddr SockAddr -- expected, then actual
     | WrongSequenceNumber Word8 Word8 -- expected, then actual
-    deriving (Show)
+    deriving (Eq, Ord, Show, Generic)
 
 {- Message responses -}
 
@@ -241,6 +244,7 @@ data Header = Header
     , sequenceCounter :: Word8
     , packetType :: Word16
     }
+    deriving (Eq, Ord, Show, Generic)
 
 instance Binary Header where
     get = do
