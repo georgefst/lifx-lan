@@ -87,8 +87,10 @@ sendMessage lightAddr msg = do
         x >>= \case
             Left e -> lifxThrow e
             Right r -> pure r
-broadcastMessage :: MonadLifx m => Message a -> m [(SockAddr, a)]
-broadcastMessage msg = do
+
+-- | If an integer argument is given, wait until we have that number of responses. Otherwise keep waiting until timeout.
+broadcastMessage :: MonadLifx m => Maybe Int -> Message a -> m [(SockAddr, a)]
+broadcastMessage nDevices msg = do
     sock <- getSocket
     liftIO $ setSocketOption sock Broadcast 1
     source <- getSource
@@ -103,10 +105,16 @@ broadcastMessage msg = do
             receiver
     liftIO $ setSocketOption sock Broadcast 0
     getResponse' msg & either (pure . pure . (receiver,)) \(expectedPacketType, messageSize, getBody) -> do
-        responses <-
-            liftIO . repeatForDuration timeoutDuration
-                . recvFrom sock
-                $ headerSize + messageSize
+        responses <- case nDevices of
+            Just n ->
+                throwEither . fmap (maybeToEither NotEnoughDevicesFound) . liftIO . timeout timeoutDuration
+                    . replicateM n
+                    . recvFrom sock
+                    $ headerSize + messageSize
+            Nothing ->
+                liftIO . repeatForDuration timeoutDuration
+                    . recvFrom sock
+                    $ headerSize + messageSize
         for responses \(bs, sender) -> do
             case runGetOrFail get $ BL.fromStrict bs of
                 Left e -> throwDecodeFailure e
@@ -118,10 +126,14 @@ broadcastMessage msg = do
                         Right (_, _, res) -> pure (sender, res)
   where
     throwDecodeFailure (bs, bo, e) = lifxThrow $ DecodeFailure (BL.toStrict bs) bo e
+    throwEither x =
+        x >>= \case
+            Left e -> lifxThrow e
+            Right r -> pure r
 
-discoverDevices :: MonadLifx f => f [HostAddress]
-discoverDevices =
-    broadcastMessage GetService >>= mapMaybeM \(addr, StateService{..}) -> do
+discoverDevices :: MonadLifx f => Maybe Int -> f [HostAddress]
+discoverDevices nDevices =
+    broadcastMessage nDevices GetService >>= mapMaybeM \(addr, StateService{..}) -> do
         if service == ServiceUDP
             then case addr of
                 SockAddrInet 56700 ha -> pure $ Just ha
@@ -175,6 +187,7 @@ data LightState = LightState
 data LifxError
     = DecodeFailure BS.ByteString ByteOffset String
     | RecvTimeout
+    | NotEnoughDevicesFound
     | WrongPacketType Word16 Word16 -- expected, then actual
     | WrongSender SockAddr SockAddr -- expected, then actual
     | WrongSequenceNumber Word8 Word8 -- expected, then actual
