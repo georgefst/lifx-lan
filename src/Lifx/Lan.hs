@@ -1,5 +1,6 @@
 module Lifx.Lan (
     sendMessage,
+    broadcastMessage,
     Message (..),
     HSBK (..),
     Duration (..),
@@ -12,6 +13,8 @@ module Lifx.Lan (
 
     -- * Responses
     LightState (..),
+    StateService (..),
+    Service (..),
     StatePower (..),
 
     -- * Low-level
@@ -30,7 +33,10 @@ import Data.Bits
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Either.Extra
+import Data.Fixed
 import Data.Function
+import Data.Time
+import Data.Traversable
 import Data.Tuple.Extra
 import GHC.Generics (Generic)
 import GHC.IO.Exception
@@ -55,7 +61,7 @@ sendMessage lightAddr msg = do
     void . liftIO $
         sendTo
             sock
-            (BL.toStrict $ encodeMessage False counter source msg)
+            (BL.toStrict $ encodeMessage True False counter source msg)
             receiver
     getResponse' msg & either pure \(expectedPacketType, messageSize, getBody) -> do
         (bs, sender) <-
@@ -78,6 +84,37 @@ sendMessage lightAddr msg = do
         x >>= \case
             Left e -> lifxThrow e
             Right r -> pure r
+broadcastMessage :: MonadLifx m => Message a -> m [(SockAddr, a)]
+broadcastMessage msg = do
+    sock <- getSocket
+    liftIO $ setSocketOption sock Broadcast 1
+    source <- getSource
+    timeoutDuration <- getTimeout
+    counter <- getCounter
+    incrementCounter
+    let receiver = SockAddrInet lifxPort $ tupleToHostAddress (255, 255, 255, 255)
+    void . liftIO $
+        sendTo
+            sock
+            (BL.toStrict $ encodeMessage False False counter source msg)
+            receiver
+    liftIO $ setSocketOption sock Broadcast 0
+    getResponse' msg & either (pure . pure . (receiver,)) \(expectedPacketType, messageSize, getBody) -> do
+        responses <-
+            liftIO . repeatForDuration timeoutDuration
+                . recvFrom sock
+                $ headerSize + messageSize
+        for responses \(bs, sender) -> do
+            case runGetOrFail get $ BL.fromStrict bs of
+                Left e -> throwDecodeFailure e
+                Right (bs', _, Header{packetType, sequenceCounter}) -> do
+                    when (sequenceCounter /= counter) $ lifxThrow $ WrongSequenceNumber counter sequenceCounter
+                    when (packetType /= expectedPacketType) $ lifxThrow $ WrongPacketType packetType expectedPacketType
+                    case runGetOrFail getBody bs' of
+                        Left e -> throwDecodeFailure e
+                        Right (_, _, res) -> pure (sender, res)
+  where
+    throwDecodeFailure (bs, bo, e) = lifxThrow $ DecodeFailure (BL.toStrict bs) bo e
 
 data HSBK = HSBK
     { hue :: Word16
@@ -90,6 +127,7 @@ newtype Duration = Duration Word32
     deriving (Eq, Ord, Show, Generic)
 
 data Message a where
+    GetService :: Message StateService
     GetPower :: Message StatePower
     SetPower :: Bool -> Message ()
     GetColor :: Message LightState
@@ -99,6 +137,18 @@ deriving instance (Eq (Message a))
 deriving instance (Ord (Message a))
 deriving instance (Show (Message a))
 
+data Service
+    = ServiceUDP
+    | ServiceReserved1
+    | ServiceReserved2
+    | ServiceReserved3
+    | ServiceReserved4
+    deriving (Eq, Ord, Show, Generic)
+data StateService = StateService
+    { service :: Service
+    , port :: Word32
+    }
+    deriving (Eq, Ord, Show, Generic)
 newtype StatePower = StatePower
     { power :: Word16
     }
@@ -125,6 +175,18 @@ class Response a where
 
 instance Response () where
     getResponse = Left ()
+instance Response StateService where
+    getResponse = Right $ (3,5,) do
+        service <-
+            getWord8 >>= \case
+                1 -> pure ServiceUDP
+                2 -> pure ServiceReserved1
+                3 -> pure ServiceReserved2
+                4 -> pure ServiceReserved3
+                5 -> pure ServiceReserved4
+                n -> fail $ "unknown service: " <> show n
+        port <- getWord32le
+        pure StateService{..}
 instance Response LightState where
     getResponse = Right $ (107,52,) do
         hsbk <- HSBK <$> getWord16le <*> getWord16le <*> getWord16le <*> getWord16le
@@ -141,6 +203,7 @@ instance Response StatePower where
 -- | Seeing as all `Message` response types are instances of `Response`, we can hide that type class from users.
 getResponse' :: Message a -> Either a (Word16, Int, Get a)
 getResponse' = \case
+    GetService{} -> getResponse
     GetPower{} -> getResponse
     SetPower{} -> getResponse
     GetColor{} -> getResponse
@@ -226,9 +289,9 @@ instance MonadLifx m => MonadLifx (ReaderT e m) where
 
 {- Low level -}
 
-encodeMessage :: Bool -> Word8 -> Word32 -> Message a -> BL.ByteString
-encodeMessage ackRequired sequenceCounter source msg =
-    runPut $ put (messageHeader ackRequired sequenceCounter source msg) >> putMessagePayload msg
+encodeMessage :: Bool -> Bool -> Word8 -> Word32 -> Message a -> BL.ByteString
+encodeMessage tagged ackRequired sequenceCounter source msg =
+    runPut $ put (messageHeader tagged ackRequired sequenceCounter source msg) >> putMessagePayload msg
 
 -- | https://lan.developer.lifx.com/docs/encoding-a-packet
 data Header = Header
@@ -288,8 +351,14 @@ instance Binary Header where
       where
         bitIf b n = if b then bit n else zeroBits
 
-messageHeader :: Bool -> Word8 -> Word32 -> Message a -> Header
-messageHeader ackRequired sequenceCounter source = \case
+messageHeader :: Bool -> Bool -> Word8 -> Word32 -> Message a -> Header
+messageHeader tagged ackRequired sequenceCounter source = \case
+    GetService{} ->
+        Header
+            { size = headerSize
+            , packetType = 2
+            , ..
+            }
     GetPower{} ->
         Header
             { size = headerSize
@@ -323,13 +392,13 @@ messageHeader ackRequired sequenceCounter source = \case
   where
     target = 0 :: Word64
     protocol = 1024 :: Word16
-    tagged = True
     addressable = True
     origin = 0 :: Word8
     resRequired = False
 
 putMessagePayload :: Message a -> Put
 putMessagePayload = \case
+    GetService -> mempty
     GetPower -> mempty
     SetPower b ->
         putWord16le if b then maxBound else minBound
@@ -355,3 +424,26 @@ succ' e
 
 headerSize :: Num a => a
 headerSize = 36
+
+{- | Keep performing the action until the given number of microseconds have passed.
+Most recent result is first in the list.
+-}
+repeatForDuration :: Int -> IO a -> IO [a]
+repeatForDuration d x = do
+    t0 <- liftIO getCurrentTime
+    let go rs = do
+            t <- liftIO getCurrentTime
+            let timeLeft = d - nominalDiffTimeToMicroSeconds (diffUTCTime t t0)
+            if timeLeft < 0
+                then pure rs
+                else
+                    timeout timeLeft x >>= \case
+                        Nothing -> pure rs
+                        Just r -> go $ r : rs
+    go []
+
+-- | For use with 'timeout', 'threadDelay' etc.
+nominalDiffTimeToMicroSeconds :: NominalDiffTime -> Int
+nominalDiffTimeToMicroSeconds t = fromInteger $ p `div` 1_000_000
+  where
+    MkFixed p = nominalDiffTimeToSeconds t
