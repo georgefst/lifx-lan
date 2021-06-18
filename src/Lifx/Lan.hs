@@ -466,6 +466,7 @@ headerSize :: Num a => a
 headerSize = 36
 
 {- | Keep performing the action until the given number of microseconds have passed.
+The inner action will be interrupted when time has passed, rather than being allowed to finish.
 Most recent result is first in the list.
 -}
 repeatForDuration :: Int -> IO a -> IO [a]
