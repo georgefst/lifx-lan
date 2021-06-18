@@ -131,7 +131,7 @@ broadcastMessage nDevices msg = do
             Left e -> lifxThrow e
             Right r -> pure r
 
-discoverDevices :: MonadLifx f => Maybe Int -> f [HostAddress]
+discoverDevices :: MonadLifx m => Maybe Int -> m [HostAddress]
 discoverDevices nDevices =
     broadcastMessage nDevices GetService >>= mapMaybeM \(addr, StateService{service}) -> do
         if service == ServiceUDP
