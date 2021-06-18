@@ -29,12 +29,14 @@ import Data.Binary.Put
 import Data.Bits
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
+import Data.Either.Extra
 import Data.Function
 import GHC.Generics (Generic)
 import GHC.IO.Exception
 import Network.Socket
 import Network.Socket.ByteString
 import System.Random
+import System.Timeout
 
 {- Core -}
 
@@ -54,7 +56,11 @@ sendMessage lightAddr msg = do
             (BL.toStrict $ encodeMessage False counter source msg)
             receiver
     getResponse' msg & either pure \(expectedPacketType, messageSize, getBody) -> do
-        (bs, sender) <- liftIO . recvFrom sock $ headerSize + messageSize
+        (bs, sender) <-
+            throwEither . liftIO . fmap (maybeToEither RecvTimeout)
+                . timeout 5_000_000
+                . recvFrom sock
+                $ headerSize + messageSize
         when (sender /= receiver) $ lifxThrow $ WrongSender receiver sender
         case runGetOrFail get $ BL.fromStrict bs of
             Left e -> throwDecodeFailure e
@@ -66,6 +72,10 @@ sendMessage lightAddr msg = do
                     Right (_, _, res) -> pure res
   where
     throwDecodeFailure (bs, bo, e) = lifxThrow $ DecodeFailure (BL.toStrict bs) bo e
+    throwEither x =
+        x >>= \case
+            Left e -> lifxThrow e
+            Right r -> pure r
 
 data HSBK = HSBK
     { hue :: Word16
@@ -97,6 +107,7 @@ data LightState = LightState
 
 data LifxError
     = DecodeFailure BS.ByteString ByteOffset String
+    | RecvTimeout
     | WrongPacketType Word16 Word16 -- expected, then actual
     | WrongSender SockAddr SockAddr -- expected, then actual
     | WrongSequenceNumber Word8 Word8 -- expected, then actual
