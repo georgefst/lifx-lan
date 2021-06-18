@@ -133,10 +133,10 @@ broadcastMessage nDevices msg = do
 
 discoverDevices :: MonadLifx f => Maybe Int -> f [HostAddress]
 discoverDevices nDevices =
-    broadcastMessage nDevices GetService >>= mapMaybeM \(addr, StateService{..}) -> do
+    broadcastMessage nDevices GetService >>= mapMaybeM \(addr, StateService{service}) -> do
         if service == ServiceUDP
             then case addr of
-                SockAddrInet 56700 ha -> pure $ Just ha
+                SockAddrInet port ha | port == lifxPort -> pure $ Just ha
                 _ -> lifxThrow $ UnexpectedSockAddrType addr
             else pure Nothing
 
