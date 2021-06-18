@@ -28,6 +28,7 @@ import Control.Monad.Except
 import Control.Monad.Extra
 import Control.Monad.Reader
 import Control.Monad.State hiding (get, put)
+import Control.Monad.Trans.Maybe
 import Data.Binary
 import Data.Binary.Get hiding (label)
 import Data.Binary.Put
@@ -284,6 +285,20 @@ instance MonadIO m => MonadLifx (LifxT m) where
     incrementCounter = LifxT $ modify succ'
     getCounter = LifxT $ gets id
     lifxThrow = LifxT . throwError
+instance MonadLifx m => MonadLifx (MaybeT m) where
+    getSocket = lift getSocket
+    getSource = lift getSource
+    getTimeout = lift getTimeout
+    incrementCounter = lift incrementCounter
+    getCounter = lift getCounter
+    lifxThrow = lift . lifxThrow
+instance MonadLifx m => MonadLifx (ExceptT e m) where
+    getSocket = lift getSocket
+    getSource = lift getSource
+    getTimeout = lift getTimeout
+    incrementCounter = lift incrementCounter
+    getCounter = lift getCounter
+    lifxThrow = lift . lifxThrow
 instance MonadLifx m => MonadLifx (StateT s m) where
     getSocket = lift getSocket
     getSource = lift getSource
