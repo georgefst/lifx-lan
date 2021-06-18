@@ -1,6 +1,7 @@
 module Lifx.Lan (
     sendMessage,
     broadcastMessage,
+    discoverDevices,
     Message (..),
     HSBK (..),
     Duration (..),
@@ -35,6 +36,8 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Either.Extra
 import Data.Fixed
 import Data.Function
+import Data.Functor
+import Data.Maybe
 import Data.Time
 import Data.Traversable
 import Data.Tuple.Extra
@@ -115,6 +118,14 @@ broadcastMessage msg = do
                         Right (_, _, res) -> pure (sender, res)
   where
     throwDecodeFailure (bs, bo, e) = lifxThrow $ DecodeFailure (BL.toStrict bs) bo e
+
+discoverDevices :: MonadLifx f => f [HostAddress]
+discoverDevices =
+    broadcastMessage GetService <&> mapMaybe \(addr, StateService{..}) -> do
+        guard (service == ServiceUDP)
+        case addr of
+            SockAddrInet 56700 ha -> Just ha
+            _ -> Nothing
 
 data HSBK = HSBK
     { hue :: Word16
