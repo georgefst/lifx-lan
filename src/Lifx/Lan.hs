@@ -25,6 +25,7 @@ module Lifx.Lan (
 
 import Control.Monad
 import Control.Monad.Except
+import Control.Monad.Extra
 import Control.Monad.Reader
 import Control.Monad.State hiding (get, put)
 import Data.Binary
@@ -36,8 +37,6 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Either.Extra
 import Data.Fixed
 import Data.Function
-import Data.Functor
-import Data.Maybe
 import Data.Time
 import Data.Traversable
 import Data.Tuple.Extra
@@ -121,11 +120,12 @@ broadcastMessage msg = do
 
 discoverDevices :: MonadLifx f => f [HostAddress]
 discoverDevices =
-    broadcastMessage GetService <&> mapMaybe \(addr, StateService{..}) -> do
-        guard (service == ServiceUDP)
-        case addr of
-            SockAddrInet 56700 ha -> Just ha
-            _ -> Nothing
+    broadcastMessage GetService >>= mapMaybeM \(addr, StateService{..}) -> do
+        if service == ServiceUDP
+            then case addr of
+                SockAddrInet 56700 ha -> pure $ Just ha
+                _ -> lifxThrow $ UnexpectedSockAddrType addr
+            else pure Nothing
 
 data HSBK = HSBK
     { hue :: Word16
@@ -177,6 +177,7 @@ data LifxError
     | WrongPacketType Word16 Word16 -- expected, then actual
     | WrongSender SockAddr SockAddr -- expected, then actual
     | WrongSequenceNumber Word8 Word8 -- expected, then actual
+    | UnexpectedSockAddrType SockAddr
     deriving (Eq, Ord, Show, Generic)
 
 {- Message responses -}
