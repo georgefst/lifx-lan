@@ -170,12 +170,12 @@ newtype LifxT m a = LifxT
         , MonadIO
         )
 
-{- | Note that this throws 'LifxError's as 'IOException's, and sets timeout to 1 second.
+{- | Note that this throws 'LifxError's as 'IOException's, and sets timeout to 5 seconds.
 Use 'runLifxT' for more control.
 -}
 runLifx :: Lifx a -> IO a
 runLifx m =
-    runLifxT 1_000_000 m >>= \case
+    runLifxT 5_000_000 m >>= \case
         Left e ->
             ioError
                 IOError
