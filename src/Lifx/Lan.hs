@@ -63,11 +63,12 @@ sendMessage receiver msg = do
     timeoutDuration <- getTimeout
     incrementCounter
     sendMessage' True receiver msg
-    getResponse' msg & either pure \(expectedPacketType, messageSize, getBody) -> do
+    getResponse' msg & either pure \(expectedPacketType, messageSize, getBody) -> untilJustM do
         (bs, sender0) <- throwEither $ maybeToEither RecvTimeout <$> receiveMessage timeoutDuration messageSize
         sender <- hostAddressFromSock sender0
-        when (sender /= receiver) $ lifxThrow $ WrongSender receiver sender
-        decodeMessage getBody expectedPacketType bs
+        res <- decodeMessage getBody expectedPacketType bs
+        when (isJust res && sender /= receiver) $ lifxThrow $ WrongSender receiver sender
+        pure res
   where
     throwEither x =
         x >>= \case
@@ -100,10 +101,12 @@ broadcastMessage' filter' maybeFinished msg = do
                 else
                     receiveMessage timeLeft messageSize >>= \case
                         Just (bs, addr) -> do
-                            x <- decodeMessage getBody expectedPacketType bs
-                            hostAddr <- hostAddressFromSock addr
-                            lift (filter' hostAddr x) >>= \case
-                                Just x' -> modify $ Map.insertWith (<>) hostAddr (pure x')
+                            decodeMessage getBody expectedPacketType bs >>= \case
+                                Just x -> do
+                                    hostAddr <- hostAddressFromSock addr
+                                    lift (filter' hostAddr x) >>= \case
+                                        Just x' -> modify $ Map.insertWith (<>) hostAddr (pure x')
+                                        Nothing -> pure ()
                                 Nothing -> pure ()
                             maybe (pure False) gets maybeFinished
                         Nothing -> do
@@ -175,7 +178,6 @@ data LifxError
     | BroadcastTimeout [HostAddress] -- contains the addresses which we have received valid responses from
     | WrongPacketType Word16 Word16 -- expected, then actual
     | WrongSender HostAddress HostAddress -- expected, then actual
-    | WrongSequenceNumber Word8 Word8 -- expected, then actual
     | UnexpectedSockAddrType SockAddr
     | UnexpectedPort PortNumber
     deriving (Eq, Ord, Show, Generic)
@@ -278,6 +280,17 @@ class MonadIO m => MonadLifx m where
     incrementCounter :: m ()
     getCounter :: m Word8
     lifxThrow :: LifxError -> m a
+    handleOldMessage ::
+        -- | expected counter value
+        Word8 ->
+        -- | actual counter value
+        Word8 ->
+        -- | packet type
+        Word16 ->
+        -- | payload
+        BL.ByteString ->
+        m ()
+    handleOldMessage _ _ _ _ = pure ()
 instance MonadIO m => MonadLifx (LifxT m) where
     getSocket = LifxT $ asks fst3
     getSource = LifxT $ asks snd3
@@ -466,17 +479,19 @@ checkPort :: MonadLifx f => PortNumber -> f ()
 checkPort port = when (port /= fromIntegral lifxPort) . lifxThrow $ UnexpectedPort port
 
 -- these helpers are all used by 'sendMessage' and 'broadcastMessage'
-decodeMessage :: MonadLifx m => Get b -> Word16 -> BS.ByteString -> m b
+decodeMessage :: MonadLifx m => Get b -> Word16 -> BS.ByteString -> m (Maybe b) -- Nothing means counter didnt match
 decodeMessage getBody expectedPacketType bs = do
     counter <- getCounter
     case runGetOrFail get $ BL.fromStrict bs of
         Left e -> throwDecodeFailure e
-        Right (bs', _, Header{packetType, sequenceCounter}) -> do
-            when (sequenceCounter /= counter) . lifxThrow $ WrongSequenceNumber counter sequenceCounter
-            when (packetType /= expectedPacketType) . lifxThrow $ WrongPacketType expectedPacketType packetType
-            case runGetOrFail getBody bs' of
-                Left e -> throwDecodeFailure e
-                Right (_, _, res) -> pure res
+        Right (bs', _, Header{packetType, sequenceCounter}) ->
+            if sequenceCounter /= counter
+                then handleOldMessage counter sequenceCounter packetType bs' >> pure Nothing
+                else do
+                    when (packetType /= expectedPacketType) . lifxThrow $ WrongPacketType expectedPacketType packetType
+                    case runGetOrFail getBody bs' of
+                        Left e -> throwDecodeFailure e
+                        Right (_, _, res) -> pure $ Just res
   where
     throwDecodeFailure (bs', bo, e) = lifxThrow $ DecodeFailure (BL.toStrict bs') bo e
 sendMessage' :: MonadLifx m => Bool -> HostAddress -> Message a -> m ()
