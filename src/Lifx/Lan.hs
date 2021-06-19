@@ -153,10 +153,15 @@ discoverDevices nDevices = do
     traverse getHostAddr . Map.keys =<< broadcastMessage f p GetService
   where
     getHostAddr = \case
-        SockAddrInet port ha | port == lifxPort -> pure ha
+        SockAddrInet port ha -> do
+            checkPort port
+            pure ha
         addr -> lifxThrow $ UnexpectedSockAddrType addr
-    f _addr StateService{..} = pure . guard $ service == ServiceUDP
+    f _addr StateService{..} = do
+        checkPort $ fromIntegral port
+        pure . guard $ service == ServiceUDP
     p = nDevices <&> \n -> (>= n) . length
+    checkPort port = when (port /= fromIntegral lifxPort) . lifxThrow $ UnexpectedPort port
 
 data HSBK = HSBK
     { hue :: Word16
@@ -210,6 +215,7 @@ data LifxError
     | WrongSender SockAddr SockAddr -- expected, then actual
     | WrongSequenceNumber Word8 Word8 -- expected, then actual
     | UnexpectedSockAddrType SockAddr
+    | UnexpectedPort PortNumber
     deriving (Eq, Ord, Show, Generic)
 
 {- Message responses -}
