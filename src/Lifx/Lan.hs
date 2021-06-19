@@ -57,35 +57,16 @@ lifxPort :: PortNumber
 lifxPort = 56700
 
 sendMessage :: MonadLifx m => HostAddress -> Message a -> m a
-sendMessage lightAddr msg = do
-    sock <- getSocket
-    source <- getSource
+sendMessage receiver msg = do
     timeoutDuration <- getTimeout
-    counter <- getCounter
     incrementCounter
-    let receiver = SockAddrInet lifxPort lightAddr
-    void . liftIO $
-        sendTo
-            sock
-            (BL.toStrict $ encodeMessage True False counter source msg)
-            receiver
+    sendMessage' True receiver msg
     getResponse' msg & either pure \(expectedPacketType, messageSize, getBody) -> do
-        (bs, sender) <-
-            throwEither . liftIO . fmap (maybeToEither RecvTimeout)
-                . timeout timeoutDuration
-                . recvFrom sock
-                $ headerSize + messageSize
+        (bs, sender0) <- throwEither $ maybeToEither RecvTimeout <$> receiveMessage timeoutDuration messageSize
+        sender <- hostAddressFromSock sender0
         when (sender /= receiver) $ lifxThrow $ WrongSender receiver sender
-        case runGetOrFail get $ BL.fromStrict bs of
-            Left e -> throwDecodeFailure e
-            Right (bs', _, Header{packetType, sequenceCounter}) -> do
-                when (sequenceCounter /= counter) $ lifxThrow $ WrongSequenceNumber counter sequenceCounter
-                when (packetType /= expectedPacketType) $ lifxThrow $ WrongPacketType packetType expectedPacketType
-                case runGetOrFail getBody bs' of
-                    Left e -> throwDecodeFailure e
-                    Right (_, _, res) -> pure res
+        decodeMessage getBody expectedPacketType bs
   where
-    throwDecodeFailure (bs, bo, e) = lifxThrow $ DecodeFailure (BL.toStrict bs) bo e
     throwEither x =
         x >>= \case
             Left e -> lifxThrow e
@@ -100,18 +81,9 @@ broadcastMessage ::
     Message a ->
     m (Map HostAddress (NonEmpty b))
 broadcastMessage filter' maybeFinished msg = do
-    sock <- getSocket
-    liftIO $ setSocketOption sock Broadcast 1
-    source <- getSource
     timeoutDuration <- getTimeout
-    counter <- getCounter
     incrementCounter
-    void . liftIO $
-        sendTo
-            sock
-            (BL.toStrict $ encodeMessage False False counter source msg)
-            receiver
-    liftIO $ setSocketOption sock Broadcast 0
+    sendMessage' False receiver msg
     getResponse' msg & either noResponseNeeded \(expectedPacketType, messageSize, getBody) -> do
         t0 <- liftIO getCurrentTime
         flip execStateT Map.empty $ untilM do
@@ -120,21 +92,10 @@ broadcastMessage filter' maybeFinished msg = do
             if timeLeft < 0
                 then pure False
                 else
-                    (liftIO . timeout timeLeft . recvFrom sock $ headerSize + messageSize) >>= \case
+                    receiveMessage timeLeft messageSize >>= \case
                         Just (bs, addr) -> do
-                            x <- case runGetOrFail get $ BL.fromStrict bs of
-                                Left e -> throwDecodeFailure e
-                                Right (bs', _, Header{packetType, sequenceCounter}) -> do
-                                    when (sequenceCounter /= counter) . lifxThrow $
-                                        WrongSequenceNumber counter sequenceCounter
-                                    when (packetType /= expectedPacketType) . lifxThrow $
-                                        WrongPacketType packetType expectedPacketType
-                                    case runGetOrFail getBody bs' of
-                                        Left e -> throwDecodeFailure e
-                                        Right (_, _, res) -> pure res
-                            hostAddr <- case addr of
-                                SockAddrInet port ha -> checkPort port >> pure ha
-                                _ -> lifxThrow $ UnexpectedSockAddrType addr
+                            x <- decodeMessage getBody expectedPacketType bs
+                            hostAddr <- hostAddressFromSock addr
                             lift (filter' hostAddr x) >>= \case
                                 Just x' -> modify $ Map.insertWith (<>) hostAddr (pure x')
                                 Nothing -> pure ()
@@ -144,10 +105,8 @@ broadcastMessage filter' maybeFinished msg = do
                             when (isJust maybeFinished) $ lifxThrow . BroadcastTimeout =<< gets Map.keys
                             pure True
   where
-    throwDecodeFailure (bs, bo, e) = lifxThrow $ DecodeFailure (BL.toStrict bs) bo e
-    receiverHA = tupleToHostAddress (255, 255, 255, 255)
-    receiver = SockAddrInet lifxPort receiverHA
-    noResponseNeeded = fmap (maybe Map.empty $ Map.singleton receiverHA . pure) . filter' receiverHA
+    receiver = tupleToHostAddress (255, 255, 255, 255)
+    noResponseNeeded = fmap (maybe Map.empty $ Map.singleton receiver . pure) . filter' receiver
 
 {- | If an integer argument is given, wait until we have responses from that number of devices.
 Otherwise just keep waiting until timeout.
@@ -209,7 +168,7 @@ data LifxError
     | RecvTimeout
     | BroadcastTimeout [HostAddress] -- contains the addresses which we have received valid responses from
     | WrongPacketType Word16 Word16 -- expected, then actual
-    | WrongSender SockAddr SockAddr -- expected, then actual
+    | WrongSender HostAddress HostAddress -- expected, then actual
     | WrongSequenceNumber Word8 Word8 -- expected, then actual
     | UnexpectedSockAddrType SockAddr
     | UnexpectedPort PortNumber
@@ -301,6 +260,7 @@ runLifx m =
 runLifxT :: MonadIO m => Int -> LifxT m a -> m (Either LifxError a)
 runLifxT timeoutDuration (LifxT x) = do
     sock <- liftIO $ socket AF_INET Datagram defaultProtocol
+    liftIO $ setSocketOption sock Broadcast 1
     liftIO . bind sock $ SockAddrInet defaultPort 0
     source <- randomIO
     runExceptT $ runReaderT (evalStateT x 0) (sock, source, timeoutDuration)
@@ -495,3 +455,42 @@ nominalDiffTimeToMicroSeconds t = fromInteger $ p `div` 1_000_000
 -- | Inverted 'whileM'.
 untilM :: Monad m => m Bool -> m ()
 untilM = whileM . fmap not
+
+checkPort :: MonadLifx f => PortNumber -> f ()
+checkPort port = when (port /= fromIntegral lifxPort) . lifxThrow $ UnexpectedPort port
+
+-- these helpers are all used by 'sendMessage' and 'broadcastMessage'
+decodeMessage :: MonadLifx m => Get b -> Word16 -> BS.ByteString -> m b
+decodeMessage getBody expectedPacketType bs = do
+    counter <- getCounter
+    case runGetOrFail get $ BL.fromStrict bs of
+        Left e -> throwDecodeFailure e
+        Right (bs', _, Header{packetType, sequenceCounter}) -> do
+            when (sequenceCounter /= counter) . lifxThrow $ WrongSequenceNumber counter sequenceCounter
+            when (packetType /= expectedPacketType) . lifxThrow $ WrongPacketType packetType expectedPacketType
+            case runGetOrFail getBody bs' of
+                Left e -> throwDecodeFailure e
+                Right (_, _, res) -> pure res
+  where
+    throwDecodeFailure (bs', bo, e) = lifxThrow $ DecodeFailure (BL.toStrict bs') bo e
+sendMessage' :: MonadLifx m => Bool -> HostAddress -> Message a -> m ()
+sendMessage' tagged receiver msg = do
+    sock <- getSocket
+    counter <- getCounter
+    source <- getSource
+    void . liftIO $
+        sendTo
+            sock
+            (BL.toStrict $ encodeMessage tagged False counter source msg)
+            (SockAddrInet lifxPort receiver)
+hostAddressFromSock :: MonadLifx m => SockAddr -> m HostAddress
+hostAddressFromSock = \case
+    SockAddrInet port ha -> checkPort port >> pure ha
+    addr -> lifxThrow $ UnexpectedSockAddrType addr
+receiveMessage :: MonadLifx m => Int -> Int -> m (Maybe (BS.ByteString, SockAddr))
+receiveMessage t messageSize = do
+    sock <- getSocket
+    liftIO
+        . timeout t
+        . recvFrom sock
+        $ headerSize + messageSize
