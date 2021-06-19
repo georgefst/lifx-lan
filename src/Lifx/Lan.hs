@@ -93,12 +93,12 @@ sendMessage lightAddr msg = do
 
 broadcastMessage ::
     MonadLifx m =>
-    -- | Discard messages which don't pass this predicate.
-    (SockAddr -> a -> m Bool) ->
+    -- | Transform output and discard messages which return 'Nothing'.
+    (SockAddr -> a -> m (Maybe b)) ->
     -- | Return once this predicate over received messages passes. Otherwise just keep waiting until timeout.
-    Maybe (Map SockAddr (NonEmpty a) -> Bool) ->
+    Maybe (Map SockAddr (NonEmpty b) -> Bool) ->
     Message a ->
-    m (Map SockAddr (NonEmpty a))
+    m (Map SockAddr (NonEmpty b))
 broadcastMessage filter' maybeFinished msg = do
     sock <- getSocket
     liftIO $ setSocketOption sock Broadcast 1
@@ -106,14 +106,13 @@ broadcastMessage filter' maybeFinished msg = do
     timeoutDuration <- getTimeout
     counter <- getCounter
     incrementCounter
-    let receiver = SockAddrInet lifxPort $ tupleToHostAddress (255, 255, 255, 255)
     void . liftIO $
         sendTo
             sock
             (BL.toStrict $ encodeMessage False False counter source msg)
             receiver
     liftIO $ setSocketOption sock Broadcast 0
-    getResponse' msg & either (pure . Map.singleton receiver . pure) \(expectedPacketType, messageSize, getBody) -> do
+    getResponse' msg & either noResponseNeeded \(expectedPacketType, messageSize, getBody) -> do
         t0 <- liftIO getCurrentTime
         flip execStateT Map.empty $ untilM do
             t <- liftIO getCurrentTime
@@ -133,8 +132,9 @@ broadcastMessage filter' maybeFinished msg = do
                                     case runGetOrFail getBody bs' of
                                         Left e -> throwDecodeFailure e
                                         Right (_, _, res) -> pure res
-                            b <- lift $ filter' addr x
-                            when b . modify $ Map.insertWith (<>) addr (pure x)
+                            lift (filter' addr x) >>= \case
+                                Just x' -> modify $ Map.insertWith (<>) addr (pure x')
+                                Nothing -> pure ()
                             maybe (pure False) gets maybeFinished
                         Nothing -> do
                             -- if we were waiting for a predicate to pass, then we've timed out
@@ -142,6 +142,8 @@ broadcastMessage filter' maybeFinished msg = do
                             pure True
   where
     throwDecodeFailure (bs, bo, e) = lifxThrow $ DecodeFailure (BL.toStrict bs) bo e
+    receiver = SockAddrInet lifxPort $ tupleToHostAddress (255, 255, 255, 255)
+    noResponseNeeded = fmap (maybe Map.empty $ Map.singleton receiver . pure) . filter' receiver
 
 {- | If an integer argument is given, wait until we have responses from that number of devices.
 Otherwise just keep waiting until timeout.
@@ -153,7 +155,7 @@ discoverDevices nDevices = do
     getHostAddr = \case
         SockAddrInet port ha | port == lifxPort -> pure ha
         addr -> lifxThrow $ UnexpectedSockAddrType addr
-    f _addr StateService{..} = pure $ service == ServiceUDP
+    f _addr StateService{..} = pure . guard $ service == ServiceUDP
     p = nDevices <&> \n -> (>= n) . length
 
 data HSBK = HSBK
