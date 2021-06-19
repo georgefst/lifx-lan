@@ -210,7 +210,7 @@ data LightState = LightState
 data LifxError
     = DecodeFailure BS.ByteString ByteOffset String
     | RecvTimeout
-    | BroadcastTimeout [SockAddr] -- contains the addresses which we have received responses from
+    | BroadcastTimeout [SockAddr] -- contains the addresses which we have received valid responses from
     | WrongPacketType Word16 Word16 -- expected, then actual
     | WrongSender SockAddr SockAddr -- expected, then actual
     | WrongSequenceNumber Word8 Word8 -- expected, then actual
