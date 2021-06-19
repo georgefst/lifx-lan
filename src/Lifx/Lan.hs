@@ -473,7 +473,7 @@ decodeMessage getBody expectedPacketType bs = do
         Left e -> throwDecodeFailure e
         Right (bs', _, Header{packetType, sequenceCounter}) -> do
             when (sequenceCounter /= counter) . lifxThrow $ WrongSequenceNumber counter sequenceCounter
-            when (packetType /= expectedPacketType) . lifxThrow $ WrongPacketType packetType expectedPacketType
+            when (packetType /= expectedPacketType) . lifxThrow $ WrongPacketType expectedPacketType packetType
             case runGetOrFail getBody bs' of
                 Left e -> throwDecodeFailure e
                 Right (_, _, res) -> pure res
