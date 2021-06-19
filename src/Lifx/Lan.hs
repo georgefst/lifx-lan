@@ -1,5 +1,6 @@
 module Lifx.Lan (
     sendMessage,
+    broadcastMessage,
     discoverDevices,
     Message (..),
     HSBK (..),
@@ -36,6 +37,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Either.Extra
 import Data.Fixed
+import Data.Foldable
 import Data.Function
 import Data.Functor
 import Data.List.NonEmpty (NonEmpty)
@@ -72,7 +74,11 @@ sendMessage receiver msg = do
             Left e -> lifxThrow e
             Right r -> pure r
 
-broadcastMessage ::
+broadcastMessage :: MonadLifx m => Message a -> m [(HostAddress, a)]
+broadcastMessage =
+    fmap (concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList)
+        . broadcastMessage' (const $ pure . pure) Nothing
+broadcastMessage' ::
     MonadLifx m =>
     -- | Transform output and discard messages which return 'Nothing'.
     (HostAddress -> a -> m (Maybe b)) ->
@@ -80,7 +86,7 @@ broadcastMessage ::
     Maybe (Map HostAddress (NonEmpty b) -> Bool) ->
     Message a ->
     m (Map HostAddress (NonEmpty b))
-broadcastMessage filter' maybeFinished msg = do
+broadcastMessage' filter' maybeFinished msg = do
     timeoutDuration <- getTimeout
     incrementCounter
     sendMessage' False receiver msg
@@ -112,7 +118,7 @@ broadcastMessage filter' maybeFinished msg = do
 Otherwise just keep waiting until timeout.
 -}
 discoverDevices :: MonadLifx m => Maybe Int -> m [HostAddress]
-discoverDevices nDevices = Map.keys <$> broadcastMessage f p GetService
+discoverDevices nDevices = Map.keys <$> broadcastMessage' f p GetService
   where
     f _addr StateService{..} = do
         checkPort $ fromIntegral port
