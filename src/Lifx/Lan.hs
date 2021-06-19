@@ -94,11 +94,11 @@ sendMessage lightAddr msg = do
 broadcastMessage ::
     MonadLifx m =>
     -- | Transform output and discard messages which return 'Nothing'.
-    (SockAddr -> a -> m (Maybe b)) ->
+    (HostAddress -> a -> m (Maybe b)) ->
     -- | Return once this predicate over received messages passes. Otherwise just keep waiting until timeout.
-    Maybe (Map SockAddr (NonEmpty b) -> Bool) ->
+    Maybe (Map HostAddress (NonEmpty b) -> Bool) ->
     Message a ->
-    m (Map SockAddr (NonEmpty b))
+    m (Map HostAddress (NonEmpty b))
 broadcastMessage filter' maybeFinished msg = do
     sock <- getSocket
     liftIO $ setSocketOption sock Broadcast 1
@@ -132,8 +132,11 @@ broadcastMessage filter' maybeFinished msg = do
                                     case runGetOrFail getBody bs' of
                                         Left e -> throwDecodeFailure e
                                         Right (_, _, res) -> pure res
-                            lift (filter' addr x) >>= \case
-                                Just x' -> modify $ Map.insertWith (<>) addr (pure x')
+                            hostAddr <- case addr of
+                                SockAddrInet port ha -> checkPort port >> pure ha
+                                _ -> lifxThrow $ UnexpectedSockAddrType addr
+                            lift (filter' hostAddr x) >>= \case
+                                Just x' -> modify $ Map.insertWith (<>) hostAddr (pure x')
                                 Nothing -> pure ()
                             maybe (pure False) gets maybeFinished
                         Nothing -> do
@@ -142,26 +145,20 @@ broadcastMessage filter' maybeFinished msg = do
                             pure True
   where
     throwDecodeFailure (bs, bo, e) = lifxThrow $ DecodeFailure (BL.toStrict bs) bo e
-    receiver = SockAddrInet lifxPort $ tupleToHostAddress (255, 255, 255, 255)
-    noResponseNeeded = fmap (maybe Map.empty $ Map.singleton receiver . pure) . filter' receiver
+    receiverHA = tupleToHostAddress (255, 255, 255, 255)
+    receiver = SockAddrInet lifxPort receiverHA
+    noResponseNeeded = fmap (maybe Map.empty $ Map.singleton receiverHA . pure) . filter' receiverHA
 
 {- | If an integer argument is given, wait until we have responses from that number of devices.
 Otherwise just keep waiting until timeout.
 -}
 discoverDevices :: MonadLifx m => Maybe Int -> m [HostAddress]
-discoverDevices nDevices = do
-    traverse getHostAddr . Map.keys =<< broadcastMessage f p GetService
+discoverDevices nDevices = Map.keys <$> broadcastMessage f p GetService
   where
-    getHostAddr = \case
-        SockAddrInet port ha -> do
-            checkPort port
-            pure ha
-        addr -> lifxThrow $ UnexpectedSockAddrType addr
     f _addr StateService{..} = do
         checkPort $ fromIntegral port
         pure . guard $ service == ServiceUDP
     p = nDevices <&> \n -> (>= n) . length
-    checkPort port = when (port /= fromIntegral lifxPort) . lifxThrow $ UnexpectedPort port
 
 data HSBK = HSBK
     { hue :: Word16
@@ -210,7 +207,7 @@ data LightState = LightState
 data LifxError
     = DecodeFailure BS.ByteString ByteOffset String
     | RecvTimeout
-    | BroadcastTimeout [SockAddr] -- contains the addresses which we have received valid responses from
+    | BroadcastTimeout [HostAddress] -- contains the addresses which we have received valid responses from
     | WrongPacketType Word16 Word16 -- expected, then actual
     | WrongSender SockAddr SockAddr -- expected, then actual
     | WrongSequenceNumber Word8 Word8 -- expected, then actual
