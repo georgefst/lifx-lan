@@ -1,4 +1,6 @@
 module Lifx.Lan (
+    Device,
+    deviceAddress,
     sendMessage,
     broadcastMessage,
     discoverDevices,
@@ -19,6 +21,7 @@ module Lifx.Lan (
     StatePower (..),
 
     -- * Low-level
+    deviceFromAddress,
     encodeMessage,
     Header (..),
 ) where
@@ -40,6 +43,7 @@ import Data.Fixed
 import Data.Foldable
 import Data.Function
 import Data.Functor
+import Data.List
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
@@ -53,21 +57,41 @@ import Network.Socket.ByteString
 import System.Random
 import System.Timeout
 
+{- Device -}
+
+newtype Device = Device {unDevice :: HostAddress}
+    deriving newtype (Eq, Ord)
+instance Show Device where
+    show (Device ha) = let (a, b, c, d) = hostAddressToTuple ha in intercalate "." $ map show [a, b, c, d]
+
+{- |
+>>> deviceFromAddress (192, 168, 0, 1)
+192.168.0.1
+
+'Device's are really just 'HostAddress's, but you don't need to know that to use this library.
+Prefer to get devices from 'discoverDevices' where possible, rather than hardcoding addresses.
+-}
+deviceFromAddress :: (Word8, Word8, Word8, Word8) -> Device
+deviceFromAddress = Device . tupleToHostAddress
+
+deviceAddress :: Device -> HostAddress
+deviceAddress = unDevice
+
 {- Core -}
 
 lifxPort :: PortNumber
 lifxPort = 56700
 
-sendMessage :: MonadLifx m => HostAddress -> Message a -> m a
+sendMessage :: MonadLifx m => Device -> Message a -> m a
 sendMessage receiver msg = do
     timeoutDuration <- getTimeout
     incrementCounter
-    sendMessage' True receiver msg
+    sendMessage' True (unDevice receiver) msg
     getResponse' msg & either pure \(expectedPacketType, messageSize, getBody) -> untilJustM do
         (bs, sender0) <- throwEither $ maybeToEither RecvTimeout <$> receiveMessage timeoutDuration messageSize
         sender <- hostAddressFromSock sender0
         res <- decodeMessage getBody expectedPacketType bs
-        when (isJust res && sender /= receiver) $ lifxThrow $ WrongSender receiver sender
+        when (isJust res && sender /= deviceAddress receiver) $ lifxThrow $ WrongSender receiver sender
         pure res
   where
     throwEither x =
@@ -75,7 +99,7 @@ sendMessage receiver msg = do
             Left e -> lifxThrow e
             Right r -> pure r
 
-broadcastMessage :: MonadLifx m => Message a -> m [(HostAddress, a)]
+broadcastMessage :: MonadLifx m => Message a -> m [(Device, a)]
 broadcastMessage =
     fmap (concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList)
         . broadcastMessage' (const $ pure . pure) Nothing
@@ -86,14 +110,14 @@ broadcastMessage' ::
     -- | Return once this predicate over received messages passes. Otherwise just keep waiting until timeout.
     Maybe (Map HostAddress (NonEmpty b) -> Bool) ->
     Message a ->
-    m (Map HostAddress (NonEmpty b))
+    m (Map Device (NonEmpty b))
 broadcastMessage' filter' maybeFinished msg = do
     timeoutDuration <- getTimeout
     incrementCounter
     sendMessage' False receiver msg
     getResponse' msg & either noResponseNeeded \(expectedPacketType, messageSize, getBody) -> do
         t0 <- liftIO getCurrentTime
-        flip execStateT Map.empty $ untilM do
+        fmap (Map.mapKeysMonotonic Device) . flip execStateT Map.empty $ untilM do
             t <- liftIO getCurrentTime
             let timeLeft = timeoutDuration - nominalDiffTimeToMicroSeconds (diffUTCTime t t0)
             if timeLeft < 0
@@ -115,12 +139,12 @@ broadcastMessage' filter' maybeFinished msg = do
                             pure True
   where
     receiver = tupleToHostAddress (255, 255, 255, 255)
-    noResponseNeeded = fmap (maybe Map.empty $ Map.singleton receiver . pure) . filter' receiver
+    noResponseNeeded = fmap (maybe Map.empty $ Map.singleton (Device receiver) . pure) . filter' receiver
 
 {- | If an integer argument is given, wait until we have responses from that number of devices.
 Otherwise just keep waiting until timeout.
 -}
-discoverDevices :: MonadLifx m => Maybe Int -> m [HostAddress]
+discoverDevices :: MonadLifx m => Maybe Int -> m [Device]
 discoverDevices nDevices = Map.keys <$> broadcastMessage' f p GetService
   where
     f _addr StateService{..} = do
@@ -177,7 +201,7 @@ data LifxError
     | RecvTimeout
     | BroadcastTimeout [HostAddress] -- contains the addresses which we have received valid responses from
     | WrongPacketType Word16 Word16 -- expected, then actual
-    | WrongSender HostAddress HostAddress -- expected, then actual
+    | WrongSender Device HostAddress -- expected, then actual
     | UnexpectedSockAddrType SockAddr
     | UnexpectedPort PortNumber
     deriving (Eq, Ord, Show, Generic)
