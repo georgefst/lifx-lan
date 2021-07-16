@@ -102,7 +102,7 @@ discoverDevices :: MonadLifx m => Maybe Int -> m [Device]
 discoverDevices nDevices = Map.keys <$> broadcastAndGetResult f p GetService
   where
     f _addr StateService{..} = do
-        checkPort $ fromIntegral port
+        checkPort port
         pure . guard $ service == ServiceUDP
     p = nDevices <&> \n -> (>= n) . length
 
@@ -136,7 +136,7 @@ data Service
     deriving (Eq, Ord, Show, Generic)
 data StateService = StateService
     { service :: Service
-    , port :: Word32
+    , port :: PortNumber
     }
     deriving (Eq, Ord, Show, Generic)
 newtype StatePower = StatePower
@@ -237,7 +237,7 @@ instance Response StateService where
                 4 -> pure ServiceReserved3
                 5 -> pure ServiceReserved4
                 n -> fail $ "unknown service: " <> show n
-        port <- getWord32le
+        port <- fromIntegral <$> getWord32le
         pure StateService{..}
 instance MessageResult StateService
 instance Response LightState where
