@@ -177,6 +177,7 @@ class MessageResult a where
             x >>= \case
                 Left e -> lifxThrow e
                 Right r -> pure r
+
     broadcastAndGetResult ::
         MonadLifx m =>
         -- | Transform output and discard messages which return 'Nothing'.
