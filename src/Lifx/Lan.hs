@@ -84,68 +84,20 @@ lifxPort = 56700
 
 sendMessage :: MonadLifx m => Device -> Message a -> m a
 sendMessage receiver msg = do
-    timeoutDuration <- getTimeout
     incrementCounter
     sendMessage' True (unDevice receiver) msg
-    getResponse' msg & either pure \(expectedPacketType, messageSize, getBody) -> untilJustM do
-        (bs, sender0) <- throwEither $ maybeToEither RecvTimeout <$> receiveMessage timeoutDuration messageSize
-        sender <- hostAddressFromSock sender0
-        res <- decodeMessage getBody expectedPacketType bs
-        when (isJust res && sender /= deviceAddress receiver) $ lifxThrow $ WrongSender receiver sender
-        pure res
-  where
-    throwEither x =
-        x >>= \case
-            Left e -> lifxThrow e
-            Right r -> pure r
+    getSendResult' msg receiver
 
 broadcastMessage :: MonadLifx m => Message a -> m [(Device, a)]
 broadcastMessage =
     fmap (concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList)
-        . broadcastMessage' (const $ pure . pure) Nothing
-broadcastMessage' ::
-    MonadLifx m =>
-    -- | Transform output and discard messages which return 'Nothing'.
-    (HostAddress -> a -> m (Maybe b)) ->
-    -- | Return once this predicate over received messages passes. Otherwise just keep waiting until timeout.
-    Maybe (Map HostAddress (NonEmpty b) -> Bool) ->
-    Message a ->
-    m (Map Device (NonEmpty b))
-broadcastMessage' filter' maybeFinished msg = do
-    timeoutDuration <- getTimeout
-    incrementCounter
-    sendMessage' False receiver msg
-    getResponse' msg & either noResponseNeeded \(expectedPacketType, messageSize, getBody) -> do
-        t0 <- liftIO getCurrentTime
-        fmap (Map.mapKeysMonotonic Device) . flip execStateT Map.empty $ untilM do
-            t <- liftIO getCurrentTime
-            let timeLeft = timeoutDuration - nominalDiffTimeToMicroSeconds (diffUTCTime t t0)
-            if timeLeft < 0
-                then pure False
-                else
-                    receiveMessage timeLeft messageSize >>= \case
-                        Just (bs, addr) -> do
-                            decodeMessage getBody expectedPacketType bs >>= \case
-                                Just x -> do
-                                    hostAddr <- hostAddressFromSock addr
-                                    lift (filter' hostAddr x) >>= \case
-                                        Just x' -> modify $ Map.insertWith (<>) hostAddr (pure x')
-                                        Nothing -> pure ()
-                                Nothing -> pure ()
-                            maybe (pure False) gets maybeFinished
-                        Nothing -> do
-                            -- if we were waiting for a predicate to pass, then we've timed out
-                            when (isJust maybeFinished) $ lifxThrow . BroadcastTimeout =<< gets Map.keys
-                            pure True
-  where
-    receiver = tupleToHostAddress (255, 255, 255, 255)
-    noResponseNeeded = fmap (maybe Map.empty $ Map.singleton (Device receiver) . pure) . filter' receiver
+        . broadcastAndGetResult' (const $ pure . pure) Nothing
 
 {- | If an integer argument is given, wait until we have responses from that number of devices.
 Otherwise just keep waiting until timeout.
 -}
 discoverDevices :: MonadLifx m => Maybe Int -> m [Device]
-discoverDevices nDevices = Map.keys <$> broadcastMessage' f p GetService
+discoverDevices nDevices = Map.keys <$> broadcastAndGetResult' f p GetService
   where
     f _addr StateService{..} = do
         checkPort $ fromIntegral port
@@ -208,13 +160,73 @@ data LifxError
 
 {- Message responses -}
 
-class Response a where
-    getResponse :: Either a (Word16, Int, Get a)
+class MessageResult a where
+    getSendResult :: MonadLifx m => Device -> m a
+    default getSendResult :: (MonadLifx m, Response a) => Device -> m a
+    getSendResult receiver = untilJustM do
+        timeoutDuration <- getTimeout
+        (bs, sender0) <- throwEither $ maybeToEither RecvTimeout <$> receiveMessage timeoutDuration (messageSize @a)
+        sender <- hostAddressFromSock sender0
+        res <- decodeMessage @a bs
+        when (isJust res && sender /= deviceAddress receiver) $ lifxThrow $ WrongSender receiver sender
+        pure res
+      where
+        throwEither x =
+            x >>= \case
+                Left e -> lifxThrow e
+                Right r -> pure r
+    broadcastAndGetResult ::
+        MonadLifx m =>
+        -- | Transform output and discard messages which return 'Nothing'.
+        (HostAddress -> a -> m (Maybe b)) ->
+        -- | Return once this predicate over received messages passes. Otherwise just keep waiting until timeout.
+        Maybe (Map HostAddress (NonEmpty b) -> Bool) ->
+        Message a ->
+        m (Map Device (NonEmpty b))
+    default broadcastAndGetResult ::
+        (MonadLifx m, Response a) =>
+        (HostAddress -> a -> m (Maybe b)) ->
+        Maybe (Map HostAddress (NonEmpty b) -> Bool) ->
+        Message a ->
+        m (Map Device (NonEmpty b))
+    broadcastAndGetResult filter' maybeFinished msg = do
+        timeoutDuration <- getTimeout
+        incrementCounter
+        sendMessage' False (tupleToHostAddress (255, 255, 255, 255)) msg
+        t0 <- liftIO getCurrentTime
+        fmap (Map.mapKeysMonotonic Device) . flip execStateT Map.empty $ untilM do
+            t <- liftIO getCurrentTime
+            let timeLeft = timeoutDuration - nominalDiffTimeToMicroSeconds (diffUTCTime t t0)
+            if timeLeft < 0
+                then pure False
+                else
+                    receiveMessage timeLeft (messageSize @a) >>= \case
+                        Just (bs, addr) -> do
+                            decodeMessage @a bs >>= \case
+                                Just x -> do
+                                    hostAddr <- hostAddressFromSock addr
+                                    lift (filter' hostAddr x) >>= \case
+                                        Just x' -> modify $ Map.insertWith (<>) hostAddr (pure x')
+                                        Nothing -> pure ()
+                                Nothing -> pure ()
+                            maybe (pure False) gets maybeFinished
+                        Nothing -> do
+                            -- if we were waiting for a predicate to pass, then we've timed out
+                            when (isJust maybeFinished) $ lifxThrow . BroadcastTimeout =<< gets Map.keys
+                            pure True
 
-instance Response () where
-    getResponse = Left ()
+class Response a where
+    expectedPacketType :: Word16
+    messageSize :: Int
+    getBody :: Get a
+
+instance MessageResult () where
+    getSendResult = const $ pure ()
+    broadcastAndGetResult = const . const . const $ pure Map.empty
 instance Response StateService where
-    getResponse = Right $ (3,5,) do
+    expectedPacketType = 3
+    messageSize = 5
+    getBody = do
         service <-
             getWord8 >>= \case
                 1 -> pure ServiceUDP
@@ -225,28 +237,46 @@ instance Response StateService where
                 n -> fail $ "unknown service: " <> show n
         port <- getWord32le
         pure StateService{..}
+instance MessageResult StateService
 instance Response LightState where
-    getResponse = Right $ (107,52,) do
+    expectedPacketType = 107
+    messageSize = 52
+    getBody = do
         hsbk <- HSBK <$> getWord16le <*> getWord16le <*> getWord16le <*> getWord16le
         skip 2
         power <- getWord16le
         label <- BS.takeWhile (/= 0) <$> getByteString 32
         skip 8
         pure LightState{..}
+instance MessageResult LightState
 instance Response StatePower where
-    getResponse =
-        Right . (22,2,) $
-            StatePower <$> getWord16le
+    expectedPacketType = 22
+    messageSize = 2
+    getBody = StatePower <$> getWord16le
+instance MessageResult StatePower
 
--- | Seeing as all `Message` response types are instances of `Response`, we can hide that type class from users.
-getResponse' :: Message a -> Either a (Word16, Int, Get a)
-getResponse' = \case
-    GetService{} -> getResponse
-    GetPower{} -> getResponse
-    SetPower{} -> getResponse
-    GetColor{} -> getResponse
-    SetColor{} -> getResponse
-    SetLightPower{} -> getResponse
+-- Seeing as all `Message` response types are instances of `MessageResult`, we can hide that type class.
+--TODO ImpredicativeTypes:
+-- msgResWitness :: Message a -> (forall a. MessageResult a => x) -> x
+msgResWitness :: Message a -> Dict (MessageResult a)
+msgResWitness = \case
+    GetService{} -> Dict
+    GetPower{} -> Dict
+    SetPower{} -> Dict
+    GetColor{} -> Dict
+    SetColor{} -> Dict
+    SetLightPower{} -> Dict
+data Dict c where
+    Dict :: c => Dict c
+getSendResult' :: MonadLifx m => Message a -> (Device -> m a)
+getSendResult' m = msgResWitness m & \Dict -> getSendResult
+broadcastAndGetResult' ::
+    MonadLifx m =>
+    (HostAddress -> a -> m (Maybe b)) ->
+    Maybe (Map HostAddress (NonEmpty b) -> Bool) ->
+    Message a ->
+    m (Map Device (NonEmpty b))
+broadcastAndGetResult' x y m = msgResWitness m & \Dict -> broadcastAndGetResult x y m
 
 {- Monad -}
 
@@ -503,8 +533,8 @@ checkPort :: MonadLifx f => PortNumber -> f ()
 checkPort port = when (port /= fromIntegral lifxPort) . lifxThrow $ UnexpectedPort port
 
 -- these helpers are all used by 'sendMessage' and 'broadcastMessage'
-decodeMessage :: MonadLifx m => Get b -> Word16 -> BS.ByteString -> m (Maybe b) -- Nothing means counter didnt match
-decodeMessage getBody expectedPacketType bs = do
+decodeMessage :: forall b m. (Response b, MonadLifx m) => BS.ByteString -> m (Maybe b) -- Nothing means counter mismatch
+decodeMessage bs = do
     counter <- getCounter
     case runGetOrFail get $ BL.fromStrict bs of
         Left e -> throwDecodeFailure e
@@ -512,7 +542,8 @@ decodeMessage getBody expectedPacketType bs = do
             if sequenceCounter /= counter
                 then handleOldMessage counter sequenceCounter packetType bs' >> pure Nothing
                 else do
-                    when (packetType /= expectedPacketType) . lifxThrow $ WrongPacketType expectedPacketType packetType
+                    when (packetType /= expectedPacketType @b) . lifxThrow $
+                        WrongPacketType (expectedPacketType @b) packetType
                     case runGetOrFail getBody bs' of
                         Left e -> throwDecodeFailure e
                         Right (_, _, res) -> pure $ Just res
@@ -533,9 +564,9 @@ hostAddressFromSock = \case
     SockAddrInet port ha -> checkPort port >> pure ha
     addr -> lifxThrow $ UnexpectedSockAddrType addr
 receiveMessage :: MonadLifx m => Int -> Int -> m (Maybe (BS.ByteString, SockAddr))
-receiveMessage t messageSize = do
+receiveMessage t size = do
     sock <- getSocket
     liftIO
         . timeout t
         . recvFrom sock
-        $ headerSize + messageSize
+        $ headerSize + size

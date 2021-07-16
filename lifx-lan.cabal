@@ -35,6 +35,8 @@ library
     default-extensions:
         AllowAmbiguousTypes
         BlockArguments
+        ConstraintKinds
+        DefaultSignatures
         DeriveAnyClass
         DeriveFunctor
         DeriveGeneric
