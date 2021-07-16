@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeFamilies #-}
+
 module Lifx.Lan (
     Device,
     deviceAddress,
@@ -88,10 +90,8 @@ sendMessage receiver msg = do
     sendMessage' True (unDevice receiver) msg
     getSendResult' msg receiver
 
-broadcastMessage :: MonadLifx m => Message a -> m [(Device, a)]
-broadcastMessage =
-    fmap (concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList)
-        . broadcastAndGetResult' (const $ pure . pure) Nothing
+broadcastMessage :: MonadLifx m => Message a -> m (BroadcastResult a)
+broadcastMessage m = msgResWitness m & \Dict -> broadcastMessage0 m
 
 {- | If an integer argument is given, wait until we have responses from that number of devices.
 Otherwise just keep waiting until timeout.
@@ -214,6 +214,15 @@ class MessageResult a where
                             -- if we were waiting for a predicate to pass, then we've timed out
                             when (isJust maybeFinished) $ lifxThrow . BroadcastTimeout =<< gets Map.keys
                             pure True
+    broadcastMessage0 :: MonadLifx m => Message a -> m (BroadcastResult a)
+    default broadcastMessage0 :: ([(Device, a)] ~ BroadcastResult a, MonadLifx m) => Message a -> m (BroadcastResult a)
+    broadcastMessage0 =
+        fmap (concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList)
+            . broadcastAndGetResult' (const $ pure . pure) Nothing
+
+type family BroadcastResult a where
+    BroadcastResult () = ()
+    BroadcastResult a = [(Device, a)]
 
 class Response a where
     expectedPacketType :: Word16
@@ -223,6 +232,7 @@ class Response a where
 instance MessageResult () where
     getSendResult = const $ pure ()
     broadcastAndGetResult = const . const . const $ pure Map.empty
+    broadcastMessage0 = const $ pure ()
 instance Response StateService where
     expectedPacketType = 3
     messageSize = 5
