@@ -86,18 +86,20 @@ sendMessage :: MonadLifx m => Device -> Message a -> m a
 sendMessage receiver msg = do
     incrementCounter
     sendMessage' True (unDevice receiver) msg
-    getSendResult' msg receiver
+    Dict <- pure $ msgResWitness msg
+    getSendResult receiver
 
 broadcastMessage :: MonadLifx m => Message a -> m [(Device, a)]
-broadcastMessage =
-    fmap (concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList)
-        . broadcastAndGetResult' (const $ pure . pure) Nothing
+broadcastMessage msg =
+    msgResWitness msg & \Dict ->
+        concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList
+            <$> broadcastAndGetResult (const $ pure . pure) Nothing msg
 
 {- | If an integer argument is given, wait until we have responses from that number of devices.
 Otherwise just keep waiting until timeout.
 -}
 discoverDevices :: MonadLifx m => Maybe Int -> m [Device]
-discoverDevices nDevices = Map.keys <$> broadcastAndGetResult' f p GetService
+discoverDevices nDevices = Map.keys <$> broadcastAndGetResult f p GetService
   where
     f _addr StateService{..} = do
         checkPort $ fromIntegral port
@@ -255,7 +257,7 @@ instance Response StatePower where
     getBody = StatePower <$> getWord16le
 instance MessageResult StatePower
 
--- Seeing as all `Message` response types are instances of `MessageResult`, we can hide that type class.
+-- all `Message` response types are instances of `MessageResult`
 --TODO ImpredicativeTypes:
 -- msgResWitness :: Message a -> (forall a. MessageResult a => x) -> x
 msgResWitness :: Message a -> Dict (MessageResult a)
@@ -268,15 +270,6 @@ msgResWitness = \case
     SetLightPower{} -> Dict
 data Dict c where
     Dict :: c => Dict c
-getSendResult' :: MonadLifx m => Message a -> (Device -> m a)
-getSendResult' m = msgResWitness m & \Dict -> getSendResult
-broadcastAndGetResult' ::
-    MonadLifx m =>
-    (HostAddress -> a -> m (Maybe b)) ->
-    Maybe (Map HostAddress (NonEmpty b) -> Bool) ->
-    Message a ->
-    m (Map Device (NonEmpty b))
-broadcastAndGetResult' x y m = msgResWitness m & \Dict -> broadcastAndGetResult x y m
 
 {- Monad -}
 
