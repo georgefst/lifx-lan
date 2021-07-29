@@ -6,7 +6,6 @@ module Lifx.Lan (
     discoverDevices,
     Message (..),
     HSBK (..),
-    Duration (..),
     Lifx,
     runLifx,
     LifxT (..),
@@ -113,16 +112,14 @@ data HSBK = HSBK
     , kelvin :: Word16
     }
     deriving (Eq, Ord, Show, Generic)
-newtype Duration = Duration Word32
-    deriving (Eq, Ord, Show, Generic)
 
 data Message a where
     GetService :: Message StateService
     GetPower :: Message StatePower
     SetPower :: Bool -> Message ()
     GetColor :: Message LightState
-    SetColor :: HSBK -> Duration -> Message ()
-    SetLightPower :: Bool -> Duration -> Message ()
+    SetColor :: HSBK -> NominalDiffTime -> Message ()
+    SetLightPower :: Bool -> NominalDiffTime -> Message ()
 deriving instance (Eq (Message a))
 deriving instance (Ord (Message a))
 deriving instance (Show (Message a))
@@ -491,16 +488,16 @@ putMessagePayload = \case
     SetPower b ->
         putWord16le if b then maxBound else minBound
     GetColor -> mempty
-    SetColor HSBK{..} (Duration d) -> do
+    SetColor HSBK{..} d -> do
         putWord8 0
         putWord16le hue
         putWord16le saturation
         putWord16le brightness
         putWord16le kelvin
-        putWord32le d
-    SetLightPower b (Duration d) -> do
+        putWord32le $ convertDuration d
+    SetLightPower b d -> do
         putWord16le if b then maxBound else minBound
-        putWord32le d
+        putWord32le $ convertDuration d
 
 {- Util -}
 
@@ -518,6 +515,9 @@ nominalDiffTimeToMicroSeconds :: NominalDiffTime -> Int
 nominalDiffTimeToMicroSeconds t = fromInteger $ p `div` 1_000_000
   where
     MkFixed p = nominalDiffTimeToSeconds t
+
+convertDuration :: NominalDiffTime -> Word32
+convertDuration = round . (* 1000) . nominalDiffTimeToSeconds
 
 -- | Inverted 'whileM'.
 untilM :: Monad m => m Bool -> m ()
