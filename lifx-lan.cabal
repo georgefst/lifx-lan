@@ -6,9 +6,13 @@ license-file:       LICENSE
 author:             George Thomas
 maintainer:         georgefsthomas@gmail.com
 synopsis:           LIFX LAN API
+homepage:           https://github.com/georgefst/lifx-lan
 extra-doc-files:
     CHANGELOG.md
     README.md
+source-repository head
+    type: git
+    location: git://github.com/georgefst/lifx-lan.git
 
 library
     exposed-modules:
