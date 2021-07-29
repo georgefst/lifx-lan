@@ -109,7 +109,8 @@ data HSBK = HSBK
     { hue :: Word16
     , saturation :: Word16
     , brightness :: Word16
-    , kelvin :: Word16
+    , -- | takes values in the range 1500 to 9000
+      kelvin :: Word16
     }
     deriving (Eq, Ord, Show, Generic)
 
