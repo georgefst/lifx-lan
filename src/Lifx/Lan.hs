@@ -197,7 +197,7 @@ class MessageResult a where
         t0 <- liftIO getCurrentTime
         fmap (Map.mapKeysMonotonic Device) . flip execStateT Map.empty $ untilM do
             t <- liftIO getCurrentTime
-            let timeLeft = timeoutDuration - nominalDiffTimeToMicroSeconds (diffUTCTime t t0)
+            let timeLeft = timeoutDuration - nominalDiffTimeToInt @Micro (diffUTCTime t t0)
             if timeLeft < 0
                 then pure False
                 else
@@ -495,10 +495,10 @@ putMessagePayload = \case
         putWord16le saturation
         putWord16le brightness
         putWord16le kelvin
-        putWord32le $ convertDuration d
+        putWord32le $ nominalDiffTimeToInt @Milli d
     SetLightPower b d -> do
         putWord16le if b then maxBound else minBound
-        putWord32le $ convertDuration d
+        putWord32le $ nominalDiffTimeToInt @Milli d
 
 {- Util -}
 
@@ -511,14 +511,10 @@ succ' e
 headerSize :: Num a => a
 headerSize = 36
 
--- | For use with 'timeout', 'threadDelay' etc.
-nominalDiffTimeToMicroSeconds :: NominalDiffTime -> Int
-nominalDiffTimeToMicroSeconds t = fromInteger $ p `div` 1_000_000
+nominalDiffTimeToInt :: forall f a r. (HasResolution r, f ~ Fixed r, Integral a) => NominalDiffTime -> a
+nominalDiffTimeToInt t = fromInteger n
   where
-    MkFixed p = nominalDiffTimeToSeconds t
-
-convertDuration :: NominalDiffTime -> Word32
-convertDuration = round . (* 1000) . nominalDiffTimeToSeconds
+    MkFixed n = realToFrac @Pico @f $ nominalDiffTimeToSeconds t
 
 -- | Inverted 'whileM'.
 untilM :: Monad m => m Bool -> m ()
