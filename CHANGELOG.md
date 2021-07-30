@@ -1,5 +1,12 @@
 # Revision history for lifx-lan
 
+## 0.4.0 -- 2021-07-30
+- Use abstract Device type.
+- Use more types from standard libraries where appropriate:
+    - PortNumber
+    - NominalDiffTime
+- General cleanup and documentation improvements.
+
 ## 0.3.0 -- 2021-06-19
 - Implement message broadcasting and device discovery.
 
