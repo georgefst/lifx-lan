@@ -41,7 +41,7 @@ import Data.List
 import Data.Maybe
 import Data.Tuple.Extra
 import Data.Word
-import GHC.IO.Exception
+import System.IO.Error
 
 import Data.Binary (Binary)
 import Data.Binary qualified as Binary
@@ -340,16 +340,7 @@ Use 'runLifxT' for more control.
 runLifx :: Lifx a -> IO a
 runLifx m =
     runLifxT 5_000_000 m >>= \case
-        Left e ->
-            ioError
-                IOError
-                    { ioe_handle = Nothing
-                    , ioe_type = OtherError
-                    , ioe_location = "LIFX"
-                    , ioe_description = show e
-                    , ioe_errno = Nothing
-                    , ioe_filename = Nothing
-                    }
+        Left e -> ioError $ mkIOError userErrorType (show e) Nothing Nothing
         Right x -> pure x
 
 runLifxT :: MonadIO m => Int -> LifxT m a -> m (Either LifxError a)
