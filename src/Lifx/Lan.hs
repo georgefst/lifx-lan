@@ -8,7 +8,7 @@ module Lifx.Lan (
     HSBK (..),
     Lifx,
     runLifx,
-    LifxT (..),
+    LifxT,
     runLifxT,
     LifxError (..),
     MonadLifx (..),
@@ -23,6 +23,7 @@ module Lifx.Lan (
     deviceFromAddress,
     encodeMessage,
     Header (..),
+    unLifxT,
 ) where
 
 import Control.Monad
