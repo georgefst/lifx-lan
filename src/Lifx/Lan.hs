@@ -29,32 +29,72 @@ import Control.Monad
 import Control.Monad.Except
 import Control.Monad.Extra
 import Control.Monad.Reader
-import Control.Monad.State hiding (get, put)
+import Control.Monad.State
 import Control.Monad.Trans.Maybe
-import Data.Binary
-import Data.Binary.Get hiding (label)
-import Data.Binary.Put
-import Data.Bits
-import Data.ByteString qualified as BS
-import Data.ByteString.Lazy qualified as BL
 import Data.Either.Extra
 import Data.Fixed
 import Data.Foldable
 import Data.Function
 import Data.Functor
 import Data.List
+import Data.Maybe
+import Data.Tuple.Extra
+import Data.Word
+import GHC.IO.Exception
+
+import Data.Binary (Binary)
+import Data.Binary qualified as Binary
+import Data.Binary.Get (
+    ByteOffset,
+    Get,
+    getByteString,
+    getWord16le,
+    getWord32le,
+    getWord64be,
+    getWord8,
+    runGetOrFail,
+    skip,
+ )
+import Data.Binary.Put (
+    Put,
+    putWord16le,
+    putWord32le,
+    putWord64be,
+    putWord8,
+    runPut,
+ )
+import Data.Bits (Bits (..))
+import Data.ByteString qualified as BS
+import Data.ByteString.Lazy qualified as BL
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe
-import Data.Time
-import Data.Tuple.Extra
+import Data.Time (
+    NominalDiffTime,
+    diffUTCTime,
+    getCurrentTime,
+    nominalDiffTimeToSeconds,
+ )
 import GHC.Generics (Generic)
-import GHC.IO.Exception
-import Network.Socket
-import Network.Socket.ByteString
-import System.Random
-import System.Timeout
+import Network.Socket (
+    Family (AF_INET),
+    HostAddress,
+    PortNumber,
+    SockAddr (SockAddrInet),
+    Socket,
+    SocketOption (Broadcast),
+    SocketType (Datagram),
+    bind,
+    defaultPort,
+    defaultProtocol,
+    hostAddressToTuple,
+    setSocketOption,
+    socket,
+    tupleToHostAddress,
+ )
+import Network.Socket.ByteString (recvFrom, sendTo)
+import System.Random (randomIO)
+import System.Timeout (timeout)
 
 {- Device -}
 
@@ -377,7 +417,7 @@ instance MonadLifx m => MonadLifx (ReaderT e m) where
 
 encodeMessage :: Bool -> Bool -> Word8 -> Word32 -> Message a -> BL.ByteString
 encodeMessage tagged ackRequired sequenceCounter source msg =
-    runPut $ put (messageHeader tagged ackRequired sequenceCounter source msg) >> putMessagePayload msg
+    runPut $ Binary.put (messageHeader tagged ackRequired sequenceCounter source msg) >> putMessagePayload msg
 
 -- | https://lan.developer.lifx.com/docs/encoding-a-packet
 data Header = Header
@@ -527,7 +567,7 @@ checkPort port = when (port /= fromIntegral lifxPort) . lifxThrow $ UnexpectedPo
 decodeMessage :: forall b m. (Response b, MonadLifx m) => BS.ByteString -> m (Maybe b) -- Nothing means counter mismatch
 decodeMessage bs = do
     counter <- getCounter
-    case runGetOrFail get $ BL.fromStrict bs of
+    case runGetOrFail Binary.get $ BL.fromStrict bs of
         Left e -> throwDecodeFailure e
         Right (bs', _, Header{packetType, sequenceCounter}) ->
             if sequenceCounter /= counter
