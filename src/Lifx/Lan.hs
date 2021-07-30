@@ -553,7 +553,7 @@ untilM :: Monad m => m Bool -> m ()
 untilM = whileM . fmap not
 
 checkPort :: MonadLifx f => PortNumber -> f ()
-checkPort port = when (port /= fromIntegral lifxPort) . lifxThrow $ UnexpectedPort port
+checkPort port = when (port /= lifxPort) . lifxThrow $ UnexpectedPort port
 
 -- these helpers are all used by 'sendMessage' and 'broadcastMessage'
 decodeMessage :: forall b m. (Response b, MonadLifx m) => BS.ByteString -> m (Maybe b) -- Nothing means counter mismatch
