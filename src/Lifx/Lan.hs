@@ -277,7 +277,10 @@ instance Response StateService where
                 4 -> pure ServiceReserved3
                 5 -> pure ServiceReserved4
                 n -> fail $ "unknown service: " <> show n
-        port <- fromIntegral <$> getWord32le
+        port <- do
+            x <- getWord32le
+            -- `network` lib uses `Word16` for ports, but LIFX StateService uses `Word32`
+            maybe (fail $ "port out of range: " <> show x) pure $ fromIntegralSafe x
         pure StateService{..}
 instance MessageResult StateService
 instance Response LightState where
@@ -539,6 +542,14 @@ succ' :: (Eq a, Bounded a, Enum a) => a -> a
 succ' e
     | e == maxBound = minBound
     | otherwise = succ e
+
+fromIntegralSafe :: forall a b. (Integral a, Integral b, Bounded b) => a -> Maybe b
+fromIntegralSafe x =
+    guard
+        ( x <= fromIntegral (maxBound @b)
+            && x >= fromIntegral (minBound @b)
+        )
+        $> fromIntegral x
 
 headerSize :: Num a => a
 headerSize = 36
