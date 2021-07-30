@@ -1,5 +1,7 @@
-Bindings to the LIFX LAN API.
+Haskell bindings to the [LIFX LAN API](https://lan.developer.lifx.com/docs).
 
-Currently very basic:
-- Only supports setting power and colour.
-- No error-handling - we assume all UDP messages will send successfully.
+This library provides a reasonably high-level interface, but doesn't try to be *too* clever.
+For example, it doesn't check message delivery, and throws an error if a light takes too long to respond.
+Messages and response types map directly to the low-level API (with links provided in the documentation).
+
+It does not yet cover the full API, but PRs are very welcome and some functionality may be added on request.

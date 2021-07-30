@@ -1,3 +1,23 @@
+{- |
+@
+-- these should be enabled by default in a future version of GHC
+-- (they aren't entirely necessary here anyway - they just make the example even simpler)
+\{\-\# LANGUAGE BlockArguments \#\-\}
+\{\-\# LANGUAGE NamedFieldPuns \#\-\}
+
+import Control.Monad.IO.Class (liftIO)
+import Data.Foldable (for_)
+
+-- | Find all devices on the network, print their addresses, and set their brightness to 50%.
+main :: IO ()
+main = runLifx do
+    devs <- discoverDevices Nothing
+    liftIO $ print devs
+    for_ devs \\d -> do
+        LightState{hsbk} <- sendMessage d GetColor
+        sendMessage d $ SetColor hsbk{brightness = maxBound \`div\` 2} 3
+@
+-}
 module Lifx.Lan (
     Device,
     deviceAddress,
@@ -14,10 +34,10 @@ module Lifx.Lan (
     MonadLifx (..),
 
     -- * Responses
-    LightState (..),
     StateService (..),
     Service (..),
     StatePower (..),
+    LightState (..),
 
     -- * Low-level
     deviceFromAddress,
@@ -99,8 +119,10 @@ import System.Timeout (timeout)
 
 {- Device -}
 
+-- | A LIFX device, such as a bulb.
 newtype Device = Device {unDevice :: HostAddress}
     deriving newtype (Eq, Ord)
+
 instance Show Device where
     show (Device ha) = let (a, b, c, d) = hostAddressToTuple ha in intercalate "." $ map show [a, b, c, d]
 
@@ -122,21 +144,25 @@ deviceAddress = unDevice
 lifxPort :: PortNumber
 lifxPort = 56700
 
-sendMessage :: MonadLifx m => Device -> Message a -> m a
+-- | Send a message and wait for a response.
+sendMessage :: MonadLifx m => Device -> Message r -> m r
 sendMessage receiver msg = do
     incrementCounter
     sendMessage' True (unDevice receiver) msg
     Dict <- pure $ msgResWitness msg
     getSendResult receiver
 
-broadcastMessage :: MonadLifx m => Message a -> m [(Device, a)]
+-- | Broadcast a message and wait for responses.
+broadcastMessage :: MonadLifx m => Message r -> m [(Device, r)]
 broadcastMessage msg =
     msgResWitness msg & \Dict ->
         concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList
             <$> broadcastAndGetResult (const $ pure . pure) Nothing msg
 
-{- | If an integer argument is given, wait until we have responses from that number of devices.
-Otherwise just keep waiting until timeout.
+{- |
+Search for devices on the local network.
+If an integer argument is given, wait until we have found that number of devices -
+otherwise just keep waiting until timeout.
 -}
 discoverDevices :: MonadLifx m => Maybe Int -> m [Device]
 discoverDevices nDevices = Map.keys <$> broadcastAndGetResult f p GetService
@@ -146,6 +172,7 @@ discoverDevices nDevices = Map.keys <$> broadcastAndGetResult f p GetService
         pure . guard $ service == ServiceUDP
     p = nDevices <&> \n -> (>= n) . length
 
+-- | A colour. See https://lan.developer.lifx.com/docs/representing-color-with-hsbk.
 data HSBK = HSBK
     { hue :: Word16
     , saturation :: Word16
@@ -155,17 +182,27 @@ data HSBK = HSBK
     }
     deriving (Eq, Ord, Show, Generic)
 
-data Message a where
+-- | A message we can send to a 'Device'. 'r' is the type of the expected response.
+data Message r where
+    -- | https://lan.developer.lifx.com/docs/querying-the-device-for-data#getservice---packet-2
+    -- (you shouldn't need this - use 'discoverDevices')
     GetService :: Message StateService
+    -- | https://lan.developer.lifx.com/docs/querying-the-device-for-data#getpower---packet-20
     GetPower :: Message StatePower
+    -- | https://lan.developer.lifx.com/docs/changing-a-device#setpower---packet-21
     SetPower :: Bool -> Message ()
+    -- | https://lan.developer.lifx.com/docs/querying-the-device-for-data#getcolor---packet-101
     GetColor :: Message LightState
+    -- | https://lan.developer.lifx.com/docs/changing-a-device#setcolor---packet-102
     SetColor :: HSBK -> NominalDiffTime -> Message ()
+    -- | https://lan.developer.lifx.com/docs/changing-a-device#setlightpower---packet-117
     SetLightPower :: Bool -> NominalDiffTime -> Message ()
-deriving instance (Eq (Message a))
-deriving instance (Ord (Message a))
-deriving instance (Show (Message a))
 
+deriving instance (Eq (Message r))
+deriving instance (Ord (Message r))
+deriving instance (Show (Message r))
+
+-- | https://lan.developer.lifx.com/docs/field-types#services
 data Service
     = ServiceUDP
     | ServiceReserved1
@@ -173,15 +210,21 @@ data Service
     | ServiceReserved3
     | ServiceReserved4
     deriving (Eq, Ord, Show, Generic)
+
+-- | https://lan.developer.lifx.com/docs/information-messages#stateservice---packet-3
 data StateService = StateService
     { service :: Service
     , port :: PortNumber
     }
     deriving (Eq, Ord, Show, Generic)
+
+-- | https://lan.developer.lifx.com/docs/information-messages#statepower---packet-22
 newtype StatePower = StatePower
     { power :: Word16
     }
     deriving (Eq, Ord, Show, Generic)
+
+-- | https://lan.developer.lifx.com/docs/information-messages#lightstate---packet-107
 data LightState = LightState
     { hsbk :: HSBK
     , power :: Word16
@@ -223,13 +266,13 @@ class MessageResult a where
         (HostAddress -> a -> m (Maybe b)) ->
         -- | Return once this predicate over received messages passes. Otherwise just keep waiting until timeout.
         Maybe (Map HostAddress (NonEmpty b) -> Bool) ->
-        Message a ->
+        Message r ->
         m (Map Device (NonEmpty b))
     default broadcastAndGetResult ::
         (MonadLifx m, Response a) =>
         (HostAddress -> a -> m (Maybe b)) ->
         Maybe (Map HostAddress (NonEmpty b) -> Bool) ->
-        Message a ->
+        Message r ->
         m (Map Device (NonEmpty b))
     broadcastAndGetResult filter' maybeFinished msg = do
         timeoutDuration <- getTimeout
@@ -302,8 +345,8 @@ instance MessageResult StatePower
 
 -- all `Message` response types are instances of `MessageResult`
 --TODO ImpredicativeTypes:
--- msgResWitness :: Message a -> (forall a. MessageResult a => x) -> x
-msgResWitness :: Message a -> Dict (MessageResult a)
+-- msgResWitness :: Message r -> (forall a. MessageResult a => x) -> x
+msgResWitness :: Message r -> Dict (MessageResult r)
 msgResWitness = \case
     GetService{} -> Dict
     GetPower{} -> Dict
@@ -316,7 +359,9 @@ data Dict c where
 
 {- Monad -}
 
+-- | A simple implementation of 'MonadLifx'.
 type Lifx = LifxT IO
+
 newtype LifxT m a = LifxT
     { unLifxT ::
         StateT
@@ -346,7 +391,12 @@ runLifx m =
         Left e -> ioError $ mkIOError userErrorType (show e) Nothing Nothing
         Right x -> pure x
 
-runLifxT :: MonadIO m => Int -> LifxT m a -> m (Either LifxError a)
+runLifxT ::
+    MonadIO m =>
+    -- | Timeout for waiting for message responses, in microseconds.
+    Int ->
+    LifxT m a ->
+    m (Either LifxError a)
 runLifxT timeoutDuration (LifxT x) = do
     sock <- liftIO $ socket AF_INET Datagram defaultProtocol
     liftIO $ setSocketOption sock Broadcast 1
@@ -354,6 +404,7 @@ runLifxT timeoutDuration (LifxT x) = do
     source <- randomIO
     runExceptT $ runReaderT (evalStateT x 0) (sock, source, timeoutDuration)
 
+-- | A monad for sending and receiving LIFX messages.
 class MonadIO m => MonadLifx m where
     getSocket :: m Socket
     getSource :: m Word32
@@ -372,6 +423,7 @@ class MonadIO m => MonadLifx m where
         BL.ByteString ->
         m ()
     handleOldMessage _ _ _ _ = pure ()
+
 instance MonadIO m => MonadLifx (LifxT m) where
     getSocket = LifxT $ asks fst3
     getSource = LifxT $ asks snd3
@@ -410,7 +462,7 @@ instance MonadLifx m => MonadLifx (ReaderT e m) where
 
 {- Low level -}
 
-encodeMessage :: Bool -> Bool -> Word8 -> Word32 -> Message a -> BL.ByteString
+encodeMessage :: Bool -> Bool -> Word8 -> Word32 -> Message r -> BL.ByteString
 encodeMessage tagged ackRequired sequenceCounter source msg =
     runPut $ Binary.put (messageHeader tagged ackRequired sequenceCounter source msg) >> putMessagePayload msg
 
@@ -472,7 +524,7 @@ instance Binary Header where
       where
         bitIf b n = if b then bit n else zeroBits
 
-messageHeader :: Bool -> Bool -> Word8 -> Word32 -> Message a -> Header
+messageHeader :: Bool -> Bool -> Word8 -> Word32 -> Message r -> Header
 messageHeader tagged ackRequired sequenceCounter source = \case
     GetService{} ->
         Header
@@ -517,7 +569,7 @@ messageHeader tagged ackRequired sequenceCounter source = \case
     origin = 0 :: Word8
     resRequired = False
 
-putMessagePayload :: Message a -> Put
+putMessagePayload :: Message r -> Put
 putMessagePayload = \case
     GetService -> mempty
     GetPower -> mempty
@@ -583,7 +635,7 @@ decodeMessage bs = do
                         Right (_, _, res) -> pure $ Just res
   where
     throwDecodeFailure (bs', bo, e) = lifxThrow $ DecodeFailure (BL.toStrict bs') bo e
-sendMessage' :: MonadLifx m => Bool -> HostAddress -> Message a -> m ()
+sendMessage' :: MonadLifx m => Bool -> HostAddress -> Message r -> m ()
 sendMessage' tagged receiver msg = do
     sock <- getSocket
     counter <- getCounter
