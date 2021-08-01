@@ -1,5 +1,8 @@
 # Revision history for lifx-lan
 
+## 0.5.0 -- 2021-08-01
+- Fix bug which was causing broadcasting not to work with messages that expect no response.
+
 ## 0.4.0 -- 2021-07-30
 - Use abstract Device type.
 - Use more types from standard libraries where appropriate:
