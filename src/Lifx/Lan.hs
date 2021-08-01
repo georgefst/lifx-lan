@@ -276,8 +276,7 @@ class MessageResult a where
         m (Map Device (NonEmpty b))
     broadcastAndGetResult filter' maybeFinished msg = do
         timeoutDuration <- getTimeout
-        incrementCounter
-        sendMessage' False (tupleToHostAddress (255, 255, 255, 255)) msg
+        broadcast msg
         t0 <- liftIO getCurrentTime
         fmap (Map.mapKeysMonotonic Device) . flip execStateT Map.empty $ untilM do
             t <- liftIO getCurrentTime
@@ -307,7 +306,7 @@ class Response a where
 
 instance MessageResult () where
     getSendResult = const $ pure ()
-    broadcastAndGetResult = const . const . const $ pure Map.empty
+    broadcastAndGetResult = const $ const $ (Map.empty <$) . broadcast
 instance Response StateService where
     expectedPacketType = 3
     messageSize = 5
@@ -656,3 +655,8 @@ receiveMessage t size = do
         . timeout t
         . recvFrom sock
         $ headerSize + size
+
+broadcast :: MonadLifx m => Message r -> m ()
+broadcast msg = do
+    incrementCounter
+    sendMessage' False (tupleToHostAddress (255, 255, 255, 255)) msg
