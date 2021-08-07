@@ -28,7 +28,7 @@ module Lifx.Lan (
     HSBK (..),
     Lifx,
     runLifx,
-    LifxT,
+    LifxT (LifxT),
     runLifxT,
     LifxError (..),
     MonadLifx (..),
