@@ -36,7 +36,9 @@ module Lifx.Lan (
     -- * Responses
     StateService (..),
     Service (..),
+    StateHostFirmware (..),
     StatePower (..),
+    StateVersion (..),
     LightState (..),
 
     -- * Low-level
@@ -54,10 +56,10 @@ import Control.Monad.State
 import Control.Monad.Trans.Maybe
 import Data.Either.Extra
 import Data.Fixed
-import Data.Foldable
+import Data.Foldable hiding (product)
 import Data.Function
 import Data.Functor
-import Data.List
+import Data.List hiding (product)
 import Data.Maybe
 import Data.Tuple.Extra
 import Data.Word
@@ -72,6 +74,7 @@ import Data.Binary.Get (
     getWord16le,
     getWord32le,
     getWord64be,
+    getWord64le,
     getWord8,
     runGetOrFail,
     skip,
@@ -116,6 +119,8 @@ import Network.Socket (
 import Network.Socket.ByteString (recvFrom, sendTo)
 import System.Random (randomIO)
 import System.Timeout (timeout)
+
+import Prelude hiding (product) --TODO RecordDotSyntax can make this and other hiding unnecessary
 
 {- Device -}
 
@@ -187,10 +192,14 @@ data Message r where
     -- | https://lan.developer.lifx.com/docs/querying-the-device-for-data#getservice---packet-2
     -- (you shouldn't need this - use 'discoverDevices')
     GetService :: Message StateService
+    -- | https://lan.developer.lifx.com/docs/querying-the-device-for-data#gethostfirmware---packet-14
+    GetHostFirmware :: Message StateHostFirmware
     -- | https://lan.developer.lifx.com/docs/querying-the-device-for-data#getpower---packet-20
     GetPower :: Message StatePower
     -- | https://lan.developer.lifx.com/docs/changing-a-device#setpower---packet-21
     SetPower :: Bool -> Message ()
+    -- | https://lan.developer.lifx.com/docs/querying-the-device-for-data#getversion---packet-32
+    GetVersion :: Message StateVersion
     -- | https://lan.developer.lifx.com/docs/querying-the-device-for-data#getcolor---packet-101
     GetColor :: Message LightState
     -- | https://lan.developer.lifx.com/docs/changing-a-device#setcolor---packet-102
@@ -218,9 +227,29 @@ data StateService = StateService
     }
     deriving (Eq, Ord, Show, Generic)
 
+-- | https://lan.developer.lifx.com/docs/information-messages#statehostfirmware---packet-15
+data StateHostFirmware = StateHostFirmware
+    { -- | The timestamp of the firmware that is on the device as an epoch
+      build :: Word64
+    , -- | The minor component of the firmware version
+      versionMinor :: Word16
+    , -- | The major component of the firmware version
+      versionMajor :: Word16
+    }
+    deriving (Eq, Ord, Show, Generic)
+
 -- | https://lan.developer.lifx.com/docs/information-messages#statepower---packet-22
 newtype StatePower = StatePower
     { power :: Word16
+    }
+    deriving (Eq, Ord, Show, Generic)
+
+-- | https://lan.developer.lifx.com/docs/information-messages#stateversion---packet-33
+data StateVersion = StateVersion
+    { -- | For LIFX products this value is 1. There may be devices in the future with a different vendor value.
+      vendor :: Word32
+    , -- | The product id of the device. The available products can be found in our Product Registry.
+      product :: Word32
     }
     deriving (Eq, Ord, Show, Generic)
 
@@ -325,11 +354,30 @@ instance Response StateService where
             maybe (fail $ "port out of range: " <> show x) pure $ fromIntegralSafe x
         pure StateService{..}
 instance MessageResult StateService
+instance Response StateHostFirmware where
+    expectedPacketType = 15
+    messageSize = 20
+    getBody = do
+        build <- getWord64le
+        skip 8
+        versionMinor <- getWord16le
+        versionMajor <- getWord16le
+        pure StateHostFirmware{..}
+instance MessageResult StateHostFirmware
 instance Response StatePower where
     expectedPacketType = 22
     messageSize = 2
     getBody = StatePower <$> getWord16le
 instance MessageResult StatePower
+instance Response StateVersion where
+    expectedPacketType = 33
+    messageSize = 20
+    getBody = do
+        vendor <- getWord32le
+        product <- getWord32le
+        skip 4
+        pure StateVersion{..}
+instance MessageResult StateVersion
 instance Response LightState where
     expectedPacketType = 107
     messageSize = 52
@@ -348,8 +396,10 @@ instance MessageResult LightState
 msgResWitness :: Message r -> Dict (MessageResult r)
 msgResWitness = \case
     GetService{} -> Dict
+    GetHostFirmware{} -> Dict
     GetPower{} -> Dict
     SetPower{} -> Dict
+    GetVersion{} -> Dict
     GetColor{} -> Dict
     SetColor{} -> Dict
     SetLightPower{} -> Dict
@@ -531,6 +581,12 @@ messageHeader tagged ackRequired sequenceCounter source = \case
             , packetType = 2
             , ..
             }
+    GetHostFirmware{} ->
+        Header
+            { size = headerSize
+            , packetType = 14
+            , ..
+            }
     GetPower{} ->
         Header
             { size = headerSize
@@ -541,6 +597,12 @@ messageHeader tagged ackRequired sequenceCounter source = \case
         Header
             { size = headerSize + 2
             , packetType = 21
+            , ..
+            }
+    GetVersion{} ->
+        Header
+            { size = headerSize
+            , packetType = 32
             , ..
             }
     GetColor{} ->
@@ -571,9 +633,11 @@ messageHeader tagged ackRequired sequenceCounter source = \case
 putMessagePayload :: Message r -> Put
 putMessagePayload = \case
     GetService -> mempty
+    GetHostFirmware -> mempty
     GetPower -> mempty
     SetPower b ->
         putWord16le if b then maxBound else minBound
+    GetVersion -> mempty
     GetColor -> mempty
     SetColor HSBK{..} d -> do
         putWord8 0
