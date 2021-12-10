@@ -77,7 +77,7 @@ main = do
                                                 , ..
                                                 }
                                         )
-            TL.writeFile "../src/Lifx/ProductInfo.hs" $
+            TL.writeFile "src/Lifx/ProductInfo.hs" $
                 "module Lifx.ProductInfo where\n\
                 \\n\
                 \import Data.Map qualified as Map\n\
