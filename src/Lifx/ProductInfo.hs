@@ -2,10 +2,11 @@ module Lifx.ProductInfo where
 
 import Data.Map qualified as Map
 import Data.Text (Text)
+import Data.Word (Word32)
 
 import Lifx.Product
 
-productInfo :: Map.Map (Int, Text) [Product]
+productInfo :: Map.Map (Word32, Text) [Product]
 productInfo = Map.fromList
     [
         (

@@ -1,9 +1,10 @@
 module Lifx.Product where
 
 import Data.Text (Text)
+import Data.Word (Word16, Word32)
 
 data Product = Product
-    { pid :: Int
+    { pid :: Word32
     , name :: Text
     , features :: Features
     , upgrades :: [Upgrade]
@@ -19,14 +20,14 @@ data Features = Features
     , buttons :: Bool
     , infrared :: Bool
     , multizone :: Bool
-    , temperatureRange :: Maybe (Int, Int)
+    , temperatureRange :: Maybe (Word16, Word16)
     , extendedMultizone :: Bool
     }
     deriving (Show)
 
 data Upgrade = Upgrade
-    { major :: Int
-    , minor :: Int
+    { major :: Word16
+    , minor :: Word16
     , features :: Features
     }
     deriving (Show)

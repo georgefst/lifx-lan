@@ -17,7 +17,7 @@ import Data.Aeson
 import Data.Functor
 import Data.Maybe
 import Data.Text (Text)
-import qualified Data.Text.Lazy.IO as TL
+import Data.Word
 import GHC.Generics
 import Lifx.Product
 import Network.HTTP.Client
@@ -82,10 +82,11 @@ main = do
                 \\n\
                 \import Data.Map qualified as Map\n\
                 \import Data.Text (Text)\n\
+                \import Data.Word (Word32)\n\
                 \\n\
                 \import Lifx.Product\n\
                 \\n\
-                \productInfo :: Map.Map (Int, Text) [Product]\n\
+                \productInfo :: Map.Map (Word32, Text) [Product]\n\
                 \productInfo = Map.fromList\n\
                 \"
                     <> out
@@ -104,7 +105,7 @@ data Data = Data
     }
     deriving (Show, Generic, FromJSON)
 data Product' = Product'
-    { pid :: Int
+    { pid :: Word32
     , name :: Text
     , features :: Features'
     , upgrades :: [Upgrade']
@@ -119,7 +120,7 @@ data Features' = Features'
     , buttons :: Maybe Bool
     , infrared :: Maybe Bool
     , multizone :: Maybe Bool
-    , temperature_range :: Maybe (Int, Int)
+    , temperature_range :: Maybe (Word16, Word16)
     , extended_multizone :: Maybe Bool
     }
     deriving (Show, Generic, FromJSON)
@@ -132,13 +133,13 @@ data Features'' = Features''
     , buttons :: Bool
     , infrared :: Bool
     , multizone :: Bool
-    , temperature_range :: Maybe (Int, Int)
+    , temperature_range :: Maybe (Word16, Word16)
     , extended_multizone :: Bool
     }
     deriving (Show, Generic, FromJSON)
 data Upgrade' = Upgrade'
-    { major :: Int
-    , minor :: Int
+    { major :: Word16
+    , minor :: Word16
     , features :: Features'
     }
     deriving (Show, Generic, FromJSON)
