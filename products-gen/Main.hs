@@ -24,6 +24,7 @@ import Network.HTTP.Client
 import Network.HTTP.Client.TLS
 import System.Exit
 import Text.Pretty.Simple
+import System.FilePath
 
 main :: IO ()
 main = do
@@ -77,7 +78,7 @@ main = do
                                                 , ..
                                                 }
                                         )
-            TL.writeFile "src/Lifx/ProductInfo.hs" $
+            TL.writeFile ("src" </> "Lifx" </> "ProductInfo.hs") $
                 "module Lifx.ProductInfo where\n\
                 \\n\
                 \import Data.Map qualified as Map\n\
