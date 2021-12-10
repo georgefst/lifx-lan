@@ -325,6 +325,11 @@ instance Response StateService where
             maybe (fail $ "port out of range: " <> show x) pure $ fromIntegralSafe x
         pure StateService{..}
 instance MessageResult StateService
+instance Response StatePower where
+    expectedPacketType = 22
+    messageSize = 2
+    getBody = StatePower <$> getWord16le
+instance MessageResult StatePower
 instance Response LightState where
     expectedPacketType = 107
     messageSize = 52
@@ -336,11 +341,6 @@ instance Response LightState where
         skip 8
         pure LightState{..}
 instance MessageResult LightState
-instance Response StatePower where
-    expectedPacketType = 22
-    messageSize = 2
-    getBody = StatePower <$> getWord16le
-instance MessageResult StatePower
 
 -- all `Message` response types are instances of `MessageResult`
 --TODO ImpredicativeTypes:
