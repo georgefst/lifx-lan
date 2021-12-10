@@ -33,52 +33,51 @@ main = do
     resp <- httpLbs url =<< newManager tlsManagerSettings
     case eitherDecode @[_] $ responseBody resp of
         Right xs -> do
-            let out =
-                    pShowOpt defaultOutputOptionsNoColor{outputOptionsInitialIndent = 4} $
-                        xs
-                            <&> \Data
-                                    { defaults =
-                                        Features''
-                                            { hev = hevDefault
-                                            , color = colorDefault
-                                            , chain = chainDefault
-                                            , matrix = matrixDefault
-                                            , relays = relaysDefault
-                                            , buttons = buttonsDefault
-                                            , infrared = infraredDefault
-                                            , multizone = multizoneDefault
-                                            , temperature_range = temperatureRangeDefault
-                                            , extended_multizone = extendedMultizoneDefault
+            let output =
+                    xs
+                        <&> \Data
+                                { defaults =
+                                    Features''
+                                        { hev = hevDefault
+                                        , color = colorDefault
+                                        , chain = chainDefault
+                                        , matrix = matrixDefault
+                                        , relays = relaysDefault
+                                        , buttons = buttonsDefault
+                                        , infrared = infraredDefault
+                                        , multizone = multizoneDefault
+                                        , temperature_range = temperatureRangeDefault
+                                        , extended_multizone = extendedMultizoneDefault
+                                        }
+                                , name = vendorName
+                                , ..
+                                } ->
+                                let fillDefaults = \Features'{..} ->
+                                        Features
+                                            { hev = fromMaybe hevDefault hev
+                                            , color = fromMaybe colorDefault color
+                                            , chain = fromMaybe chainDefault chain
+                                            , matrix = fromMaybe matrixDefault matrix
+                                            , relays = fromMaybe relaysDefault relays
+                                            , buttons = fromMaybe buttonsDefault buttons
+                                            , infrared = fromMaybe infraredDefault infrared
+                                            , multizone = fromMaybe multizoneDefault multizone
+                                            , temperatureRange = temperature_range <|> temperatureRangeDefault
+                                            , extendedMultizone = fromMaybe extendedMultizoneDefault extended_multizone
                                             }
-                                    , name = vendorName
-                                    , ..
-                                    } ->
-                                    let fillDefaults = \Features'{..} ->
-                                            Features
-                                                { hev = fromMaybe hevDefault hev
-                                                , color = fromMaybe colorDefault color
-                                                , chain = fromMaybe chainDefault chain
-                                                , matrix = fromMaybe matrixDefault matrix
-                                                , relays = fromMaybe relaysDefault relays
-                                                , buttons = fromMaybe buttonsDefault buttons
-                                                , infrared = fromMaybe infraredDefault infrared
-                                                , multizone = fromMaybe multizoneDefault multizone
-                                                , temperatureRange = temperature_range <|> temperatureRangeDefault
-                                                , extendedMultizone = fromMaybe extendedMultizoneDefault extended_multizone
-                                                }
-                                     in ( (vid, vendorName)
-                                        , products <&> \Product'{..} ->
-                                            Product
-                                                { features = fillDefaults features
-                                                , upgrades =
-                                                    upgrades <&> \Upgrade'{features = upgradeFeatures, ..} ->
-                                                        Upgrade
-                                                            { features = fillDefaults upgradeFeatures
-                                                            , ..
-                                                            }
-                                                , ..
-                                                }
-                                        )
+                                 in ( (vid, vendorName)
+                                    , products <&> \Product'{..} ->
+                                        Product
+                                            { features = fillDefaults features
+                                            , upgrades =
+                                                upgrades <&> \Upgrade'{features = upgradeFeatures, ..} ->
+                                                    Upgrade
+                                                        { features = fillDefaults upgradeFeatures
+                                                        , ..
+                                                        }
+                                            , ..
+                                            }
+                                    )
             TL.writeFile ("src" </> "Lifx" </> "ProductInfo.hs") $
                 "module Lifx.ProductInfo where\n\
                 \\n\
@@ -91,7 +90,7 @@ main = do
                 \productInfo :: Map.Map (Word32, Text) [Product]\n\
                 \productInfo = Map.fromList\n\
                 \"
-                    <> out
+                    <> pShowOpt defaultOutputOptionsNoColor{outputOptionsInitialIndent = 4} output
                     <> "\n"
         Left err -> putStrLn ("Decoding JSON failed: " <> err) >> exitFailure
 
