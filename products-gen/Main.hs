@@ -90,6 +90,7 @@ main = do
                 \productInfo = Map.fromList\n\
                 \"
                     <> out
+                    <> "\n"
         Left err -> putStrLn ("Decoding JSON failed: " <> err) >> exitFailure
 
 commit :: String
