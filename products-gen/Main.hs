@@ -30,8 +30,7 @@ import Text.Pretty.Simple
 
 main :: IO ()
 main = do
-    man <- newManager tlsManagerSettings
-    resp <- httpLbs url man
+    resp <- httpLbs url =<< newManager tlsManagerSettings
     case eitherDecode @[_] $ responseBody resp of
         Right xs -> do
             let out =
