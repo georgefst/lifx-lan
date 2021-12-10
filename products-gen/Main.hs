@@ -25,8 +25,8 @@ import Lifx.Product
 import Network.HTTP.Client
 import Network.HTTP.Client.TLS
 import System.Exit
-import Text.Pretty.Simple
 import System.FilePath
+import Text.Pretty.Simple
 
 main :: IO ()
 main = do
