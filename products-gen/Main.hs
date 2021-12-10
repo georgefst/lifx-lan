@@ -4,6 +4,7 @@ so we'd need something like the ability to specify hs-source-dirs: https://githu
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -17,6 +18,7 @@ import Data.Aeson
 import Data.Functor
 import Data.Maybe
 import Data.Text (Text)
+import Data.Text.Lazy.IO qualified as TL
 import Data.Word
 import GHC.Generics
 import Lifx.Product
