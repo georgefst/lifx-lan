@@ -1,5 +1,9 @@
 # Revision history for lifx-lan
 
+## 0.5.1 -- 2021-12-12
+- Implement `getProductInfo`.
+- Expose `LifxT` constructor.
+
 ## 0.5.0 -- 2021-08-01
 - Fix bug which was causing broadcasting not to work with messages that expect no response.
 
