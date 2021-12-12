@@ -1,1662 +1,1668 @@
 module Lifx.ProductInfo where
 
-import Data.Map qualified as Map
-import Data.Text (Text)
-import Data.Word (Word32)
-
 import Lifx.Product
 
-productInfo :: Map.Map (Word32, Text) [Product]
-productInfo = Map.fromList
-    [
-        (
-            ( 1
-            , "LIFX"
-            )
-        ,
-            [ Product
+productInfo :: [VendorInfo]
+productInfo =
+    [ VendorInfo
+        { vid = 1
+        , name = "LIFX"
+        , defaults = Features
+            { hev = False
+            , color = False
+            , chain = False
+            , matrix = False
+            , relays = False
+            , buttons = False
+            , infrared = False
+            , multizone = False
+            , temperatureRange = Nothing
+            , extendedMultizone = False
+            }
+        , products =
+            [ ProductInfo
                 { pid = 1
                 , name = "LIFX Original 1000"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 3
                 , name = "LIFX Color 650"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 10
                 , name = "LIFX White 800 (Low Voltage)"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2700
                         , 6500
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 11
                 , name = "LIFX White 800 (High Voltage)"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2700
                         , 6500
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 15
                 , name = "LIFX Color 1000"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 18
                 , name = "LIFX White 900 BR30 (Low Voltage)"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 19
                 , name = "LIFX White 900 BR30 (High Voltage)"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 20
                 , name = "LIFX Color 1000 BR30"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 22
                 , name = "LIFX Color 1000"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 27
                 , name = "LIFX A19"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades =
                     [ Upgrade
                         { major = 2
                         , minor = 80
-                        , features = Features
-                            { hev = False
-                            , color = False
-                            , chain = False
-                            , matrix = False
-                            , relays = False
-                            , buttons = False
-                            , infrared = False
-                            , multizone = False
+                        , features = PartialFeatures
+                            { hev = Nothing
+                            , color = Nothing
+                            , chain = Nothing
+                            , matrix = Nothing
+                            , relays = Nothing
+                            , buttons = Nothing
+                            , infrared = Nothing
+                            , multizone = Nothing
                             , temperatureRange = Just
                                 ( 1500
                                 , 9000
                                 )
-                            , extendedMultizone = False
+                            , extendedMultizone = Nothing
                             }
                         }
                     ]
                 }
-            , Product
+            , ProductInfo
                 { pid = 28
                 , name = "LIFX BR30"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades =
                     [ Upgrade
                         { major = 2
                         , minor = 80
-                        , features = Features
-                            { hev = False
-                            , color = False
-                            , chain = False
-                            , matrix = False
-                            , relays = False
-                            , buttons = False
-                            , infrared = False
-                            , multizone = False
+                        , features = PartialFeatures
+                            { hev = Nothing
+                            , color = Nothing
+                            , chain = Nothing
+                            , matrix = Nothing
+                            , relays = Nothing
+                            , buttons = Nothing
+                            , infrared = Nothing
+                            , multizone = Nothing
                             , temperatureRange = Just
                                 ( 1500
                                 , 9000
                                 )
-                            , extendedMultizone = False
+                            , extendedMultizone = Nothing
                             }
                         }
                     ]
                 }
-            , Product
+            , ProductInfo
                 { pid = 29
                 , name = "LIFX A19 Night Vision"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = True
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just True
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades =
                     [ Upgrade
                         { major = 2
                         , minor = 80
-                        , features = Features
-                            { hev = False
-                            , color = False
-                            , chain = False
-                            , matrix = False
-                            , relays = False
-                            , buttons = False
-                            , infrared = False
-                            , multizone = False
+                        , features = PartialFeatures
+                            { hev = Nothing
+                            , color = Nothing
+                            , chain = Nothing
+                            , matrix = Nothing
+                            , relays = Nothing
+                            , buttons = Nothing
+                            , infrared = Nothing
+                            , multizone = Nothing
                             , temperatureRange = Just
                                 ( 1500
                                 , 9000
                                 )
-                            , extendedMultizone = False
+                            , extendedMultizone = Nothing
                             }
                         }
                     ]
                 }
-            , Product
+            , ProductInfo
                 { pid = 30
                 , name = "LIFX BR30 Night Vision"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = True
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just True
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades =
                     [ Upgrade
                         { major = 2
                         , minor = 80
-                        , features = Features
-                            { hev = False
-                            , color = False
-                            , chain = False
-                            , matrix = False
-                            , relays = False
-                            , buttons = False
-                            , infrared = False
-                            , multizone = False
+                        , features = PartialFeatures
+                            { hev = Nothing
+                            , color = Nothing
+                            , chain = Nothing
+                            , matrix = Nothing
+                            , relays = Nothing
+                            , buttons = Nothing
+                            , infrared = Nothing
+                            , multizone = Nothing
                             , temperatureRange = Just
                                 ( 1500
                                 , 9000
                                 )
-                            , extendedMultizone = False
+                            , extendedMultizone = Nothing
                             }
                         }
                     ]
                 }
-            , Product
+            , ProductInfo
                 { pid = 31
                 , name = "LIFX Z"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = True
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just True
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 32
                 , name = "LIFX Z"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = True
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just True
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades =
                     [ Upgrade
                         { major = 2
                         , minor = 77
-                        , features = Features
-                            { hev = False
-                            , color = False
-                            , chain = False
-                            , matrix = False
-                            , relays = False
-                            , buttons = False
-                            , infrared = False
-                            , multizone = False
+                        , features = PartialFeatures
+                            { hev = Nothing
+                            , color = Nothing
+                            , chain = Nothing
+                            , matrix = Nothing
+                            , relays = Nothing
+                            , buttons = Nothing
+                            , infrared = Nothing
+                            , multizone = Nothing
                             , temperatureRange = Nothing
-                            , extendedMultizone = True
+                            , extendedMultizone = Just True
                             }
                         }
                     , Upgrade
                         { major = 2
                         , minor = 80
-                        , features = Features
-                            { hev = False
-                            , color = False
-                            , chain = False
-                            , matrix = False
-                            , relays = False
-                            , buttons = False
-                            , infrared = False
-                            , multizone = False
+                        , features = PartialFeatures
+                            { hev = Nothing
+                            , color = Nothing
+                            , chain = Nothing
+                            , matrix = Nothing
+                            , relays = Nothing
+                            , buttons = Nothing
+                            , infrared = Nothing
+                            , multizone = Nothing
                             , temperatureRange = Just
                                 ( 1500
                                 , 9000
                                 )
-                            , extendedMultizone = False
+                            , extendedMultizone = Nothing
                             }
                         }
                     ]
                 }
-            , Product
+            , ProductInfo
                 { pid = 36
                 , name = "LIFX Downlight"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades =
                     [ Upgrade
                         { major = 2
                         , minor = 80
-                        , features = Features
-                            { hev = False
-                            , color = False
-                            , chain = False
-                            , matrix = False
-                            , relays = False
-                            , buttons = False
-                            , infrared = False
-                            , multizone = False
+                        , features = PartialFeatures
+                            { hev = Nothing
+                            , color = Nothing
+                            , chain = Nothing
+                            , matrix = Nothing
+                            , relays = Nothing
+                            , buttons = Nothing
+                            , infrared = Nothing
+                            , multizone = Nothing
                             , temperatureRange = Just
                                 ( 1500
                                 , 9000
                                 )
-                            , extendedMultizone = False
+                            , extendedMultizone = Nothing
                             }
                         }
                     ]
                 }
-            , Product
+            , ProductInfo
                 { pid = 37
                 , name = "LIFX Downlight"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades =
                     [ Upgrade
                         { major = 2
                         , minor = 80
-                        , features = Features
-                            { hev = False
-                            , color = False
-                            , chain = False
-                            , matrix = False
-                            , relays = False
-                            , buttons = False
-                            , infrared = False
-                            , multizone = False
+                        , features = PartialFeatures
+                            { hev = Nothing
+                            , color = Nothing
+                            , chain = Nothing
+                            , matrix = Nothing
+                            , relays = Nothing
+                            , buttons = Nothing
+                            , infrared = Nothing
+                            , multizone = Nothing
                             , temperatureRange = Just
                                 ( 1500
                                 , 9000
                                 )
-                            , extendedMultizone = False
+                            , extendedMultizone = Nothing
                             }
                         }
                     ]
                 }
-            , Product
+            , ProductInfo
                 { pid = 38
                 , name = "LIFX Beam"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = True
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just True
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades =
                     [ Upgrade
                         { major = 2
                         , minor = 77
-                        , features = Features
-                            { hev = False
-                            , color = False
-                            , chain = False
-                            , matrix = False
-                            , relays = False
-                            , buttons = False
-                            , infrared = False
-                            , multizone = False
+                        , features = PartialFeatures
+                            { hev = Nothing
+                            , color = Nothing
+                            , chain = Nothing
+                            , matrix = Nothing
+                            , relays = Nothing
+                            , buttons = Nothing
+                            , infrared = Nothing
+                            , multizone = Nothing
                             , temperatureRange = Nothing
-                            , extendedMultizone = True
+                            , extendedMultizone = Just True
                             }
                         }
                     , Upgrade
                         { major = 2
                         , minor = 80
-                        , features = Features
-                            { hev = False
-                            , color = False
-                            , chain = False
-                            , matrix = False
-                            , relays = False
-                            , buttons = False
-                            , infrared = False
-                            , multizone = False
+                        , features = PartialFeatures
+                            { hev = Nothing
+                            , color = Nothing
+                            , chain = Nothing
+                            , matrix = Nothing
+                            , relays = Nothing
+                            , buttons = Nothing
+                            , infrared = Nothing
+                            , multizone = Nothing
                             , temperatureRange = Just
                                 ( 1500
                                 , 9000
                                 )
-                            , extendedMultizone = False
+                            , extendedMultizone = Nothing
                             }
                         }
                     ]
                 }
-            , Product
+            , ProductInfo
                 { pid = 39
                 , name = "LIFX Downlight White to Warm"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades =
                     [ Upgrade
                         { major = 2
                         , minor = 80
-                        , features = Features
-                            { hev = False
-                            , color = False
-                            , chain = False
-                            , matrix = False
-                            , relays = False
-                            , buttons = False
-                            , infrared = False
-                            , multizone = False
+                        , features = PartialFeatures
+                            { hev = Nothing
+                            , color = Nothing
+                            , chain = Nothing
+                            , matrix = Nothing
+                            , relays = Nothing
+                            , buttons = Nothing
+                            , infrared = Nothing
+                            , multizone = Nothing
                             , temperatureRange = Just
                                 ( 1500
                                 , 9000
                                 )
-                            , extendedMultizone = False
+                            , extendedMultizone = Nothing
                             }
                         }
                     ]
                 }
-            , Product
+            , ProductInfo
                 { pid = 40
                 , name = "LIFX Downlight"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades =
                     [ Upgrade
                         { major = 2
                         , minor = 80
-                        , features = Features
-                            { hev = False
-                            , color = False
-                            , chain = False
-                            , matrix = False
-                            , relays = False
-                            , buttons = False
-                            , infrared = False
-                            , multizone = False
+                        , features = PartialFeatures
+                            { hev = Nothing
+                            , color = Nothing
+                            , chain = Nothing
+                            , matrix = Nothing
+                            , relays = Nothing
+                            , buttons = Nothing
+                            , infrared = Nothing
+                            , multizone = Nothing
                             , temperatureRange = Just
                                 ( 1500
                                 , 9000
                                 )
-                            , extendedMultizone = False
+                            , extendedMultizone = Nothing
                             }
                         }
                     ]
                 }
-            , Product
+            , ProductInfo
                 { pid = 43
                 , name = "LIFX A19"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades =
                     [ Upgrade
                         { major = 2
                         , minor = 80
-                        , features = Features
-                            { hev = False
-                            , color = False
-                            , chain = False
-                            , matrix = False
-                            , relays = False
-                            , buttons = False
-                            , infrared = False
-                            , multizone = False
+                        , features = PartialFeatures
+                            { hev = Nothing
+                            , color = Nothing
+                            , chain = Nothing
+                            , matrix = Nothing
+                            , relays = Nothing
+                            , buttons = Nothing
+                            , infrared = Nothing
+                            , multizone = Nothing
                             , temperatureRange = Just
                                 ( 1500
                                 , 9000
                                 )
-                            , extendedMultizone = False
+                            , extendedMultizone = Nothing
                             }
                         }
                     ]
                 }
-            , Product
+            , ProductInfo
                 { pid = 44
                 , name = "LIFX BR30"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades =
                     [ Upgrade
                         { major = 2
                         , minor = 80
-                        , features = Features
-                            { hev = False
-                            , color = False
-                            , chain = False
-                            , matrix = False
-                            , relays = False
-                            , buttons = False
-                            , infrared = False
-                            , multizone = False
+                        , features = PartialFeatures
+                            { hev = Nothing
+                            , color = Nothing
+                            , chain = Nothing
+                            , matrix = Nothing
+                            , relays = Nothing
+                            , buttons = Nothing
+                            , infrared = Nothing
+                            , multizone = Nothing
                             , temperatureRange = Just
                                 ( 1500
                                 , 9000
                                 )
-                            , extendedMultizone = False
+                            , extendedMultizone = Nothing
                             }
                         }
                     ]
                 }
-            , Product
+            , ProductInfo
                 { pid = 45
                 , name = "LIFX A19 Night Vision"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = True
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just True
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades =
                     [ Upgrade
                         { major = 2
                         , minor = 80
-                        , features = Features
-                            { hev = False
-                            , color = False
-                            , chain = False
-                            , matrix = False
-                            , relays = False
-                            , buttons = False
-                            , infrared = False
-                            , multizone = False
+                        , features = PartialFeatures
+                            { hev = Nothing
+                            , color = Nothing
+                            , chain = Nothing
+                            , matrix = Nothing
+                            , relays = Nothing
+                            , buttons = Nothing
+                            , infrared = Nothing
+                            , multizone = Nothing
                             , temperatureRange = Just
                                 ( 1500
                                 , 9000
                                 )
-                            , extendedMultizone = False
+                            , extendedMultizone = Nothing
                             }
                         }
                     ]
                 }
-            , Product
+            , ProductInfo
                 { pid = 46
                 , name = "LIFX BR30 Night Vision"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = True
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just True
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades =
                     [ Upgrade
                         { major = 2
                         , minor = 80
-                        , features = Features
-                            { hev = False
-                            , color = False
-                            , chain = False
-                            , matrix = False
-                            , relays = False
-                            , buttons = False
-                            , infrared = False
-                            , multizone = False
+                        , features = PartialFeatures
+                            { hev = Nothing
+                            , color = Nothing
+                            , chain = Nothing
+                            , matrix = Nothing
+                            , relays = Nothing
+                            , buttons = Nothing
+                            , infrared = Nothing
+                            , multizone = Nothing
                             , temperatureRange = Just
                                 ( 1500
                                 , 9000
                                 )
-                            , extendedMultizone = False
+                            , extendedMultizone = Nothing
                             }
                         }
                     ]
                 }
-            , Product
+            , ProductInfo
                 { pid = 49
                 , name = "LIFX Mini Color"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 50
                 , name = "LIFX Mini White to Warm"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 6500
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades =
                     [ Upgrade
                         { major = 3
                         , minor = 70
-                        , features = Features
-                            { hev = False
-                            , color = False
-                            , chain = False
-                            , matrix = False
-                            , relays = False
-                            , buttons = False
-                            , infrared = False
-                            , multizone = False
+                        , features = PartialFeatures
+                            { hev = Nothing
+                            , color = Nothing
+                            , chain = Nothing
+                            , matrix = Nothing
+                            , relays = Nothing
+                            , buttons = Nothing
+                            , infrared = Nothing
+                            , multizone = Nothing
                             , temperatureRange = Just
                                 ( 1500
                                 , 9000
                                 )
-                            , extendedMultizone = False
+                            , extendedMultizone = Nothing
                             }
                         }
                     ]
                 }
-            , Product
+            , ProductInfo
                 { pid = 51
                 , name = "LIFX Mini White"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2700
                         , 2700
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 52
                 , name = "LIFX GU10"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 53
                 , name = "LIFX GU10"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 55
                 , name = "LIFX Tile"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = True
-                    , matrix = True
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just True
+                    , matrix = Just True
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 57
                 , name = "LIFX Candle"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = True
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just True
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 59
                 , name = "LIFX Mini Color"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 60
                 , name = "LIFX Mini White to Warm"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 6500
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades =
                     [ Upgrade
                         { major = 3
                         , minor = 70
-                        , features = Features
-                            { hev = False
-                            , color = False
-                            , chain = False
-                            , matrix = False
-                            , relays = False
-                            , buttons = False
-                            , infrared = False
-                            , multizone = False
+                        , features = PartialFeatures
+                            { hev = Nothing
+                            , color = Nothing
+                            , chain = Nothing
+                            , matrix = Nothing
+                            , relays = Nothing
+                            , buttons = Nothing
+                            , infrared = Nothing
+                            , multizone = Nothing
                             , temperatureRange = Just
                                 ( 1500
                                 , 9000
                                 )
-                            , extendedMultizone = False
+                            , extendedMultizone = Nothing
                             }
                         }
                     ]
                 }
-            , Product
+            , ProductInfo
                 { pid = 61
                 , name = "LIFX Mini White"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2700
                         , 2700
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 62
                 , name = "LIFX A19"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 63
                 , name = "LIFX BR30"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 64
                 , name = "LIFX A19 Night Vision"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = True
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just True
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 65
                 , name = "LIFX BR30 Night Vision"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = True
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just True
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 66
                 , name = "LIFX Mini White"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2700
                         , 2700
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 68
                 , name = "LIFX Candle"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = True
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just True
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 70
                 , name = "LIFX Switch"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = True
-                    , buttons = True
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Just True
+                    , buttons = Just True
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Nothing
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 71
                 , name = "LIFX Switch"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = True
-                    , buttons = True
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Just True
+                    , buttons = Just True
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Nothing
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 81
                 , name = "LIFX Candle White to Warm"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2200
                         , 6500
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 82
                 , name = "LIFX Filament Clear"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2100
                         , 2100
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 85
                 , name = "LIFX Filament Amber"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2000
                         , 2000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 87
                 , name = "LIFX Mini White"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2700
                         , 2700
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 88
                 , name = "LIFX Mini White"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2700
                         , 2700
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 89
                 , name = "LIFX Switch"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = True
-                    , buttons = True
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Just True
+                    , buttons = Just True
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Nothing
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 90
                 , name = "LIFX Clean"
-                , features = Features
-                    { hev = True
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Just True
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 91
                 , name = "LIFX Color"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 92
                 , name = "LIFX Color"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 93
                 , name = "LIFX A19 US"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 94
                 , name = "LIFX BR30"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 96
                 , name = "LIFX Candle White to Warm"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2200
                         , 6500
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 97
                 , name = "LIFX A19"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 98
                 , name = "LIFX BR30"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 99
                 , name = "LIFX Clean"
-                , features = Features
-                    { hev = True
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Just True
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 100
                 , name = "LIFX Filament Clear"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2100
                         , 2100
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 101
                 , name = "LIFX Filament Amber"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 2000
                         , 2000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 109
                 , name = "LIFX A19 Night Vision"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = True
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just True
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 110
                 , name = "LIFX BR30 Night Vision"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = True
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just True
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 111
                 , name = "LIFX A19 Night Vision"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = True
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just True
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 112
                 , name = "LIFX BR30 Night Vision Intl"
-                , features = Features
-                    { hev = False
-                    , color = True
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = True
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just True
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 113
                 , name = "LIFX Mini WW US"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
-            , Product
+            , ProductInfo
                 { pid = 114
                 , name = "LIFX Mini WW Intl"
-                , features = Features
-                    { hev = False
-                    , color = False
-                    , chain = False
-                    , matrix = False
-                    , relays = False
-                    , buttons = False
-                    , infrared = False
-                    , multizone = False
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
                     , temperatureRange = Just
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = False
+                    , extendedMultizone = Nothing
                     }
                 , upgrades = []
                 }
             ]
-        )
+        }
     ]

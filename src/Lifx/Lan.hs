@@ -41,6 +41,11 @@ module Lifx.Lan (
     StateVersion (..),
     LightState (..),
 
+    -- ** Product info
+    getProductInfo,
+    Product (..),
+    Features (..),
+
     -- * Low-level
     deviceFromAddress,
     encodeMessage,
@@ -48,6 +53,7 @@ module Lifx.Lan (
     unLifxT,
 ) where
 
+import Control.Applicative
 import Control.Monad
 import Control.Monad.Except
 import Control.Monad.Extra
@@ -91,8 +97,9 @@ import Data.Bits (Bits (..))
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.List.NonEmpty (NonEmpty)
-import Data.Map (Map)
+import Data.Map (Map, (!?))
 import Data.Map.Strict qualified as Map
+import Data.Text (Text)
 import Data.Time (
     NominalDiffTime,
     diffUTCTime,
@@ -120,7 +127,11 @@ import Network.Socket.ByteString (recvFrom, sendTo)
 import System.Random (randomIO)
 import System.Timeout (timeout)
 
-import Prelude hiding (product) --TODO RecordDotSyntax can make this and other hiding unnecessary
+import Lifx.Product
+import Lifx.ProductInfo
+
+--TODO RecordDotSyntax can make this and other hiding unnecessary (we could also use "id" instead of "productId"...)
+import Prelude hiding (product)
 
 {- Device -}
 
@@ -269,6 +280,8 @@ data LifxError
     | WrongSender Device HostAddress -- expected, then actual
     | UnexpectedSockAddrType SockAddr
     | UnexpectedPort PortNumber
+    | UnknownVendorId Word32
+    | UnknownProductId Word32
     deriving (Eq, Ord, Show, Generic)
 
 {- Message responses -}
@@ -649,6 +662,110 @@ putMessagePayload = \case
     SetLightPower b d -> do
         putWord16le if b then maxBound else minBound
         putWord32le $ nominalDiffTimeToInt @Milli d
+
+{- Product info -}
+
+productInfoMap :: Map Word32 (Features, Map Word32 ProductInfo)
+productInfoMap =
+    Map.fromList $
+        productInfo <&> \VendorInfo{..} ->
+            ( vid
+            ,
+                ( defaults
+                , Map.fromList $ (pid &&& id) <$> products
+                )
+            )
+
+data Product = Product
+    { name :: Text
+    , productId :: Word32
+    , features :: Features
+    }
+    deriving (Show)
+
+getProductInfo :: MonadLifx m => Device -> m Product
+getProductInfo dev = do
+    StateHostFirmware{..} <- sendMessage dev GetHostFirmware
+    StateVersion{..} <- sendMessage dev GetVersion
+    case productInfoMap !? vendor of
+        Nothing -> lifxThrow $ UnknownVendorId vendor
+        Just (defaults, products) -> case products !? product of
+            Nothing -> lifxThrow $ UnknownProductId product
+            Just ProductInfo{features = originalFeatures, ..} ->
+                pure
+                    Product
+                        { name
+                        , productId = product
+                        , features =
+                            completeFeatures defaults $
+                                foldl
+                                    ( \old Upgrade{..} ->
+                                        if (versionMajor, versionMinor) >= (major, minor)
+                                            then addFeatures features old
+                                            else old
+                                    )
+                                    originalFeatures
+                                    upgrades
+                        }
+  where
+    --TODO RecordDotSyntax
+    completeFeatures
+        Features
+            { ..
+            }
+        PartialFeatures
+            { hev = maybe_hev
+            , color = maybe_color
+            , chain = maybe_chain
+            , matrix = maybe_matrix
+            , relays = maybe_relays
+            , buttons = maybe_buttons
+            , infrared = maybe_infrared
+            , multizone = maybe_multizone
+            , temperatureRange = maybe_temperatureRange
+            , extendedMultizone = maybe_extendedMultizone
+            } =
+            Features
+                { hev = fromMaybe hev maybe_hev
+                , color = fromMaybe color maybe_color
+                , chain = fromMaybe chain maybe_chain
+                , matrix = fromMaybe matrix maybe_matrix
+                , relays = fromMaybe relays maybe_relays
+                , buttons = fromMaybe buttons maybe_buttons
+                , infrared = fromMaybe infrared maybe_infrared
+                , multizone = fromMaybe multizone maybe_multizone
+                , temperatureRange = maybe_temperatureRange <|> temperatureRange
+                , extendedMultizone = fromMaybe extendedMultizone maybe_extendedMultizone
+                }
+    -- left-biased
+    addFeatures
+        PartialFeatures
+            { ..
+            }
+        PartialFeatures
+            { hev = old_hev
+            , color = old_color
+            , chain = old_chain
+            , matrix = old_matrix
+            , relays = old_relays
+            , buttons = old_buttons
+            , infrared = old_infrared
+            , multizone = old_multizone
+            , temperatureRange = old_temperatureRange
+            , extendedMultizone = old_extendedMultizone
+            } =
+            PartialFeatures
+                { hev = hev <|> old_hev
+                , color = color <|> old_color
+                , chain = chain <|> old_chain
+                , matrix = matrix <|> old_matrix
+                , relays = relays <|> old_relays
+                , buttons = buttons <|> old_buttons
+                , infrared = infrared <|> old_infrared
+                , multizone = multizone <|> old_multizone
+                , temperatureRange = temperatureRange <|> old_temperatureRange
+                , extendedMultizone = extendedMultizone <|> old_extendedMultizone
+                }
 
 {- Util -}
 
