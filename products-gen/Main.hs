@@ -16,7 +16,7 @@ module Main where
 import Data.Aeson
 import Data.Text.Lazy.IO qualified as TL
 import Deriving.Aeson
-import Lifx.Product
+import Lifx.Internal.Product
 import Network.HTTP.Client
 import Network.HTTP.Client.TLS
 import System.Exit
@@ -31,7 +31,7 @@ main = do
             TL.writeFile ("src" </> "Lifx" </> "ProductInfo.hs") $
                 "module Lifx.ProductInfo where\n\
                 \\n\
-                \import Lifx.Product\n\
+                \import Lifx.Internal.Product\n\
                 \\n\
                 \productInfo :: [VendorInfo]\n\
                 \productInfo =\n\

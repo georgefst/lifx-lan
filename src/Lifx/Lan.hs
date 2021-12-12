@@ -127,8 +127,8 @@ import Network.Socket.ByteString (recvFrom, sendTo)
 import System.Random (randomIO)
 import System.Timeout (timeout)
 
-import Lifx.Product
-import Lifx.ProductInfo
+import Lifx.Internal.Product
+import Lifx.Internal.ProductInfo
 
 --TODO RecordDotSyntax can make this and other hiding unnecessary (we could also use "id" instead of "productId"...)
 import Prelude hiding (product)

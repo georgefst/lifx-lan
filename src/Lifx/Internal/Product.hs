@@ -1,4 +1,5 @@
-module Lifx.Product where
+-- | An exact mapping of the types in LIFX's `products.json`. It's easier to just use 'Lifx.Lan.getProductInfo'.
+module Lifx.Internal.Product where
 
 import Data.Text (Text)
 import Data.Word (Word16, Word32)

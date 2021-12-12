@@ -1,6 +1,7 @@
-module Lifx.ProductInfo where
+-- | This is auto-generated - see the "product-gen" script.
+module Lifx.Internal.ProductInfo where
 
-import Lifx.Product
+import Lifx.Internal.Product
 
 productInfo :: [VendorInfo]
 productInfo =
