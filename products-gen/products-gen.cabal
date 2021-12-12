@@ -1,0 +1,19 @@
+cabal-version:      3.4
+name:               products-gen
+version:            0.1.0.0
+
+executable products-gen
+    main-is: Main.hs
+    build-depends:
+        lifx-lan,
+        base >= 4.14,
+        aeson,
+        deriving-aeson,
+        directory,
+        filepath,
+        http-client,
+        http-client-tls,
+        pretty-simple,
+        text,
+    ghc-options:
+        -Wall

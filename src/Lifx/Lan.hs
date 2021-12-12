@@ -36,8 +36,15 @@ module Lifx.Lan (
     -- * Responses
     StateService (..),
     Service (..),
+    StateHostFirmware (..),
     StatePower (..),
+    StateVersion (..),
     LightState (..),
+
+    -- ** Product info
+    getProductInfo,
+    Product (..),
+    Features (..),
 
     -- * Low-level
     deviceFromAddress,
@@ -46,6 +53,7 @@ module Lifx.Lan (
     unLifxT,
 ) where
 
+import Control.Applicative
 import Control.Monad
 import Control.Monad.Except
 import Control.Monad.Extra
@@ -54,10 +62,10 @@ import Control.Monad.State
 import Control.Monad.Trans.Maybe
 import Data.Either.Extra
 import Data.Fixed
-import Data.Foldable
+import Data.Foldable hiding (product)
 import Data.Function
 import Data.Functor
-import Data.List
+import Data.List hiding (product)
 import Data.Maybe
 import Data.Tuple.Extra
 import Data.Word
@@ -72,6 +80,7 @@ import Data.Binary.Get (
     getWord16le,
     getWord32le,
     getWord64be,
+    getWord64le,
     getWord8,
     runGetOrFail,
     skip,
@@ -88,8 +97,9 @@ import Data.Bits (Bits (..))
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.List.NonEmpty (NonEmpty)
-import Data.Map (Map)
+import Data.Map (Map, (!?))
 import Data.Map.Strict qualified as Map
+import Data.Text (Text)
 import Data.Time (
     NominalDiffTime,
     diffUTCTime,
@@ -116,6 +126,12 @@ import Network.Socket (
 import Network.Socket.ByteString (recvFrom, sendTo)
 import System.Random (randomIO)
 import System.Timeout (timeout)
+
+import Lifx.Internal.Product
+import Lifx.Internal.ProductInfo
+
+--TODO RecordDotSyntax can make this and other hiding unnecessary (we could also use "id" instead of "productId"...)
+import Prelude hiding (product)
 
 {- Device -}
 
@@ -187,10 +203,14 @@ data Message r where
     -- | https://lan.developer.lifx.com/docs/querying-the-device-for-data#getservice---packet-2
     -- (you shouldn't need this - use 'discoverDevices')
     GetService :: Message StateService
+    -- | https://lan.developer.lifx.com/docs/querying-the-device-for-data#gethostfirmware---packet-14
+    GetHostFirmware :: Message StateHostFirmware
     -- | https://lan.developer.lifx.com/docs/querying-the-device-for-data#getpower---packet-20
     GetPower :: Message StatePower
     -- | https://lan.developer.lifx.com/docs/changing-a-device#setpower---packet-21
     SetPower :: Bool -> Message ()
+    -- | https://lan.developer.lifx.com/docs/querying-the-device-for-data#getversion---packet-32
+    GetVersion :: Message StateVersion
     -- | https://lan.developer.lifx.com/docs/querying-the-device-for-data#getcolor---packet-101
     GetColor :: Message LightState
     -- | https://lan.developer.lifx.com/docs/changing-a-device#setcolor---packet-102
@@ -218,9 +238,29 @@ data StateService = StateService
     }
     deriving (Eq, Ord, Show, Generic)
 
+-- | https://lan.developer.lifx.com/docs/information-messages#statehostfirmware---packet-15
+data StateHostFirmware = StateHostFirmware
+    { -- | The timestamp of the firmware that is on the device as an epoch
+      build :: Word64
+    , -- | The minor component of the firmware version
+      versionMinor :: Word16
+    , -- | The major component of the firmware version
+      versionMajor :: Word16
+    }
+    deriving (Eq, Ord, Show, Generic)
+
 -- | https://lan.developer.lifx.com/docs/information-messages#statepower---packet-22
 newtype StatePower = StatePower
     { power :: Word16
+    }
+    deriving (Eq, Ord, Show, Generic)
+
+-- | https://lan.developer.lifx.com/docs/information-messages#stateversion---packet-33
+data StateVersion = StateVersion
+    { -- | For LIFX products this value is 1. There may be devices in the future with a different vendor value.
+      vendor :: Word32
+    , -- | The product id of the device. The available products can be found in our Product Registry.
+      product :: Word32
     }
     deriving (Eq, Ord, Show, Generic)
 
@@ -240,6 +280,8 @@ data LifxError
     | WrongSender Device HostAddress -- expected, then actual
     | UnexpectedSockAddrType SockAddr
     | UnexpectedPort PortNumber
+    | UnknownVendorId Word32
+    | UnknownProductId Word32
     deriving (Eq, Ord, Show, Generic)
 
 {- Message responses -}
@@ -325,6 +367,30 @@ instance Response StateService where
             maybe (fail $ "port out of range: " <> show x) pure $ fromIntegralSafe x
         pure StateService{..}
 instance MessageResult StateService
+instance Response StateHostFirmware where
+    expectedPacketType = 15
+    messageSize = 20
+    getBody = do
+        build <- getWord64le
+        skip 8
+        versionMinor <- getWord16le
+        versionMajor <- getWord16le
+        pure StateHostFirmware{..}
+instance MessageResult StateHostFirmware
+instance Response StatePower where
+    expectedPacketType = 22
+    messageSize = 2
+    getBody = StatePower <$> getWord16le
+instance MessageResult StatePower
+instance Response StateVersion where
+    expectedPacketType = 33
+    messageSize = 20
+    getBody = do
+        vendor <- getWord32le
+        product <- getWord32le
+        skip 4
+        pure StateVersion{..}
+instance MessageResult StateVersion
 instance Response LightState where
     expectedPacketType = 107
     messageSize = 52
@@ -336,11 +402,6 @@ instance Response LightState where
         skip 8
         pure LightState{..}
 instance MessageResult LightState
-instance Response StatePower where
-    expectedPacketType = 22
-    messageSize = 2
-    getBody = StatePower <$> getWord16le
-instance MessageResult StatePower
 
 -- all `Message` response types are instances of `MessageResult`
 --TODO ImpredicativeTypes:
@@ -348,8 +409,10 @@ instance MessageResult StatePower
 msgResWitness :: Message r -> Dict (MessageResult r)
 msgResWitness = \case
     GetService{} -> Dict
+    GetHostFirmware{} -> Dict
     GetPower{} -> Dict
     SetPower{} -> Dict
+    GetVersion{} -> Dict
     GetColor{} -> Dict
     SetColor{} -> Dict
     SetLightPower{} -> Dict
@@ -531,6 +594,12 @@ messageHeader tagged ackRequired sequenceCounter source = \case
             , packetType = 2
             , ..
             }
+    GetHostFirmware{} ->
+        Header
+            { size = headerSize
+            , packetType = 14
+            , ..
+            }
     GetPower{} ->
         Header
             { size = headerSize
@@ -541,6 +610,12 @@ messageHeader tagged ackRequired sequenceCounter source = \case
         Header
             { size = headerSize + 2
             , packetType = 21
+            , ..
+            }
+    GetVersion{} ->
+        Header
+            { size = headerSize
+            , packetType = 32
             , ..
             }
     GetColor{} ->
@@ -571,9 +646,11 @@ messageHeader tagged ackRequired sequenceCounter source = \case
 putMessagePayload :: Message r -> Put
 putMessagePayload = \case
     GetService -> mempty
+    GetHostFirmware -> mempty
     GetPower -> mempty
     SetPower b ->
         putWord16le if b then maxBound else minBound
+    GetVersion -> mempty
     GetColor -> mempty
     SetColor HSBK{..} d -> do
         putWord8 0
@@ -585,6 +662,110 @@ putMessagePayload = \case
     SetLightPower b d -> do
         putWord16le if b then maxBound else minBound
         putWord32le $ nominalDiffTimeToInt @Milli d
+
+{- Product info -}
+
+productInfoMap :: Map Word32 (Features, Map Word32 ProductInfo)
+productInfoMap =
+    Map.fromList $
+        productInfo <&> \VendorInfo{..} ->
+            ( vid
+            ,
+                ( defaults
+                , Map.fromList $ (pid &&& id) <$> products
+                )
+            )
+
+data Product = Product
+    { name :: Text
+    , productId :: Word32
+    , features :: Features
+    }
+    deriving (Show)
+
+getProductInfo :: MonadLifx m => Device -> m Product
+getProductInfo dev = do
+    StateHostFirmware{..} <- sendMessage dev GetHostFirmware
+    StateVersion{..} <- sendMessage dev GetVersion
+    case productInfoMap !? vendor of
+        Nothing -> lifxThrow $ UnknownVendorId vendor
+        Just (defaults, products) -> case products !? product of
+            Nothing -> lifxThrow $ UnknownProductId product
+            Just ProductInfo{features = originalFeatures, ..} ->
+                pure
+                    Product
+                        { name
+                        , productId = product
+                        , features =
+                            completeFeatures defaults $
+                                foldl
+                                    ( \old Upgrade{..} ->
+                                        if (versionMajor, versionMinor) >= (major, minor)
+                                            then addFeatures features old
+                                            else old
+                                    )
+                                    originalFeatures
+                                    upgrades
+                        }
+  where
+    --TODO RecordDotSyntax
+    completeFeatures
+        Features
+            { ..
+            }
+        PartialFeatures
+            { hev = maybe_hev
+            , color = maybe_color
+            , chain = maybe_chain
+            , matrix = maybe_matrix
+            , relays = maybe_relays
+            , buttons = maybe_buttons
+            , infrared = maybe_infrared
+            , multizone = maybe_multizone
+            , temperatureRange = maybe_temperatureRange
+            , extendedMultizone = maybe_extendedMultizone
+            } =
+            Features
+                { hev = fromMaybe hev maybe_hev
+                , color = fromMaybe color maybe_color
+                , chain = fromMaybe chain maybe_chain
+                , matrix = fromMaybe matrix maybe_matrix
+                , relays = fromMaybe relays maybe_relays
+                , buttons = fromMaybe buttons maybe_buttons
+                , infrared = fromMaybe infrared maybe_infrared
+                , multizone = fromMaybe multizone maybe_multizone
+                , temperatureRange = maybe_temperatureRange <|> temperatureRange
+                , extendedMultizone = fromMaybe extendedMultizone maybe_extendedMultizone
+                }
+    -- left-biased
+    addFeatures
+        PartialFeatures
+            { ..
+            }
+        PartialFeatures
+            { hev = old_hev
+            , color = old_color
+            , chain = old_chain
+            , matrix = old_matrix
+            , relays = old_relays
+            , buttons = old_buttons
+            , infrared = old_infrared
+            , multizone = old_multizone
+            , temperatureRange = old_temperatureRange
+            , extendedMultizone = old_extendedMultizone
+            } =
+            PartialFeatures
+                { hev = hev <|> old_hev
+                , color = color <|> old_color
+                , chain = chain <|> old_chain
+                , matrix = matrix <|> old_matrix
+                , relays = relays <|> old_relays
+                , buttons = buttons <|> old_buttons
+                , infrared = infrared <|> old_infrared
+                , multizone = multizone <|> old_multizone
+                , temperatureRange = temperatureRange <|> old_temperatureRange
+                , extendedMultizone = extendedMultizone <|> old_extendedMultizone
+                }
 
 {- Util -}
 
