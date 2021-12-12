@@ -35,16 +35,26 @@ data PartialFeatures = PartialFeatures
     deriving (Show)
 
 data Features = Features
-    { hev :: Bool
-    , color :: Bool
-    , chain :: Bool
-    , matrix :: Bool
-    , relays :: Bool
-    , buttons :: Bool
-    , infrared :: Bool
-    , multizone :: Bool
-    , temperatureRange :: Maybe (Word16, Word16)
-    , extendedMultizone :: Bool
+    { -- | The light supports emitting HEV light
+      hev :: Bool
+    , -- | The light changes physical appearance when the Hue value is changed
+      color :: Bool
+    , -- | The light may be connected to physically separated hardware (currently only the LIFX Tile)
+      chain :: Bool
+    , -- | The light supports a 2D matrix of LEDs (the Tile and Candle)
+      matrix :: Bool
+    , -- | The device has relays for controlling physical power to something (the LIFX Switch)
+      relays :: Bool
+    , -- | The device has physical buttons to press (the LIFX Switch)
+      buttons :: Bool
+    , -- | The light supports emitting infrared light
+      infrared :: Bool
+    , -- | The light supports a 1D linear array of LEDs (the Z and Beam)
+      multizone :: Bool
+    , -- | An array of the minimum and maximum kelvin values this device supports. If the numbers are the same then the device does not support variable kelvin values. It is null for devices that aren't lighting products (the LIFX Switch)
+      temperatureRange :: Maybe (Word16, Word16)
+    , -- | The more capable extended API for multizone control that lets us control all the zones on the device with a single message instead of many.
+      extendedMultizone :: Bool
     }
     deriving (Show)
 
