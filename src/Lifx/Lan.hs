@@ -684,7 +684,7 @@ data Product = Product
     }
     deriving (Show)
 
--- | Ask a device for it's vendor and product ID, and look up info on it from the official database.
+-- | Ask a device for its vendor and product ID, and look up info on it from the official database.
 getProductInfo :: MonadLifx m => Device -> m Product
 getProductInfo dev = do
     StateHostFirmware{..} <- sendMessage dev GetHostFirmware
