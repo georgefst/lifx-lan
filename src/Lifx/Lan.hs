@@ -676,6 +676,7 @@ productInfoMap =
                 )
             )
 
+-- | Information about a particular LIFX product.
 data Product = Product
     { name :: Text
     , productId :: Word32
@@ -683,6 +684,7 @@ data Product = Product
     }
     deriving (Show)
 
+-- | Ask a device for it's vendor and product ID, and look up info on it from the official database.
 getProductInfo :: MonadLifx m => Device -> m Product
 getProductInfo dev = do
     StateHostFirmware{..} <- sendMessage dev GetHostFirmware
