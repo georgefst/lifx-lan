@@ -53,7 +53,6 @@ deriving instance Generic ProductInfo
 deriving via CustomJSON Opts ProductInfo instance FromJSON ProductInfo
 deriving instance Generic PartialFeatures
 deriving via CustomJSON Opts PartialFeatures instance FromJSON PartialFeatures
-deriving instance Generic Features
 deriving via CustomJSON Opts Features instance FromJSON Features
 deriving instance Generic Upgrade
 deriving via CustomJSON Opts Upgrade instance FromJSON Upgrade

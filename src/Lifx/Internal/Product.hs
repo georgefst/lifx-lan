@@ -3,6 +3,7 @@ module Lifx.Internal.Product where
 
 import Data.Text (Text)
 import Data.Word (Word16, Word32)
+import GHC.Generics (Generic)
 
 data VendorInfo = VendorInfo
     { vid :: Word32
@@ -56,7 +57,7 @@ data Features = Features
     , -- | The more capable extended API for multizone control that lets us control all the zones on the device with a single message instead of many.
       extendedMultizone :: Bool
     }
-    deriving (Show)
+    deriving (Eq, Ord, Show, Generic)
 
 data Upgrade = Upgrade
     { major :: Word16

@@ -682,7 +682,7 @@ data Product = Product
     , productId :: Word32
     , features :: Features
     }
-    deriving (Show)
+    deriving (Eq, Ord, Show, Generic)
 
 -- | Ask a device for its vendor and product ID, and look up info on it from the official database.
 getProductInfo :: MonadLifx m => Device -> m Product
