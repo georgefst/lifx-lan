@@ -31,6 +31,7 @@ module Lifx.Lan (
     LifxT (LifxT),
     runLifxT,
     LifxError (..),
+    ProductLookupError (..),
     MonadLifx (..),
 
     -- * Responses
@@ -280,8 +281,7 @@ data LifxError
     | WrongSender Device HostAddress -- expected, then actual
     | UnexpectedSockAddrType SockAddr
     | UnexpectedPort PortNumber
-    | UnknownVendorId Word32
-    | UnknownProductId Word32
+    | ProductLookupError ProductLookupError
     deriving (Eq, Ord, Show, Generic)
 
 {- Message responses -}
@@ -689,10 +689,19 @@ getProductInfo :: MonadLifx m => Device -> m Product
 getProductInfo dev = do
     StateHostFirmware{..} <- sendMessage dev GetHostFirmware
     StateVersion{..} <- sendMessage dev GetVersion
+    either (lifxThrow . ProductLookupError) pure $ productLookup vendor product versionMinor versionMajor
+
+data ProductLookupError
+    = UnknownVendorId Word32
+    | UnknownProductId Word32
+    deriving (Eq, Ord, Show, Generic)
+
+productLookup :: Word32 -> Word32 -> Word16 -> Word16 -> Either ProductLookupError Product
+productLookup vendor product versionMinor versionMajor =
     case productInfoMap !? vendor of
-        Nothing -> lifxThrow $ UnknownVendorId vendor
+        Nothing -> Left $ UnknownVendorId vendor
         Just (defaults, products) -> case products !? product of
-            Nothing -> lifxThrow $ UnknownProductId product
+            Nothing -> Left $ UnknownProductId product
             Just ProductInfo{features = originalFeatures, ..} ->
                 pure
                     Product
