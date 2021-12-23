@@ -1,5 +1,9 @@
 # Revision history for lifx-lan
 
+## 0.6 -- 2021-12-23
+- Refactor to expose lower-level product lookup functionality via `Lifx.Internal.ProductInfoMap`.
+- To facilitate the above, modify `LifxError` slightly, with a new `ProductLookupError` type.
+
 ## 0.5.1 -- 2021-12-12
 - Implement `getProductInfo`.
 - Expose `LifxT` constructor.
