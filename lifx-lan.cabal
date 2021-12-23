@@ -18,6 +18,7 @@ library
     exposed-modules:
         Lifx.Internal.Product
         Lifx.Internal.ProductInfo
+        Lifx.Internal.ProductInfoMap
         Lifx.Lan
     hs-source-dirs: src
     ghc-options:
