@@ -130,7 +130,7 @@ import System.Timeout (timeout)
 import Lifx.Internal.Product
 import Lifx.Internal.ProductInfoMap
 
---TODO RecordDotSyntax can make this and other hiding unnecessary (we could also use "id" instead of "productId"...)
+-- TODO RecordDotSyntax can make this and other hiding unnecessary (we could also use "id" instead of "productId"...)
 import Prelude hiding (product)
 
 {- Device -}
@@ -193,8 +193,8 @@ data HSBK = HSBK
     { hue :: Word16
     , saturation :: Word16
     , brightness :: Word16
-    , -- | takes values in the range 1500 to 9000
-      kelvin :: Word16
+    , kelvin :: Word16
+    -- ^ takes values in the range 1500 to 9000
     }
     deriving (Eq, Ord, Show, Generic)
 
@@ -240,12 +240,12 @@ data StateService = StateService
 
 -- | https://lan.developer.lifx.com/docs/information-messages#statehostfirmware---packet-15
 data StateHostFirmware = StateHostFirmware
-    { -- | The timestamp of the firmware that is on the device as an epoch
-      build :: Word64
-    , -- | The minor component of the firmware version
-      versionMinor :: Word16
-    , -- | The major component of the firmware version
-      versionMajor :: Word16
+    { build :: Word64
+    -- ^ The timestamp of the firmware that is on the device as an epoch
+    , versionMinor :: Word16
+    -- ^ The minor component of the firmware version
+    , versionMajor :: Word16
+    -- ^ The major component of the firmware version
     }
     deriving (Eq, Ord, Show, Generic)
 
@@ -257,10 +257,10 @@ newtype StatePower = StatePower
 
 -- | https://lan.developer.lifx.com/docs/information-messages#stateversion---packet-33
 data StateVersion = StateVersion
-    { -- | For LIFX products this value is 1. There may be devices in the future with a different vendor value.
-      vendor :: Word32
-    , -- | The product id of the device. The available products can be found in our Product Registry.
-      product :: Word32
+    { vendor :: Word32
+    -- ^ For LIFX products this value is 1. There may be devices in the future with a different vendor value.
+    , product :: Word32
+    -- ^ The product id of the device. The available products can be found in our Product Registry.
     }
     deriving (Eq, Ord, Show, Generic)
 
@@ -403,8 +403,8 @@ instance Response LightState where
 instance MessageResult LightState
 
 -- all `Message` response types are instances of `MessageResult`
---TODO ImpredicativeTypes:
--- msgResWitness :: Message r -> (forall a. MessageResult a => x) -> x
+-- TODO ImpredicativeTypes:
+--   msgResWitness :: Message r -> (forall a. MessageResult a => x) -> x
 msgResWitness :: Message r -> Dict (MessageResult r)
 msgResWitness = \case
     GetService{} -> Dict

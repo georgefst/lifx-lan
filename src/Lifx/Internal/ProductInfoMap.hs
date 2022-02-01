@@ -17,7 +17,7 @@ import GHC.Generics (Generic)
 import Lifx.Internal.Product
 import Lifx.Internal.ProductInfo
 
---TODO RecordDotSyntax can make this and other hiding unnecessary (we could also use "id" instead of "productId"...)
+-- TODO RecordDotSyntax can make this and other hiding unnecessary (we could also use "id" instead of "productId"...)
 import Prelude hiding (product)
 
 productInfoMap :: Map Word32 (Features, Map Word32 ProductInfo)
@@ -26,9 +26,9 @@ productInfoMap =
         productInfo <&> \VendorInfo{..} ->
             ( vid
             ,
-                ( defaults
-                , Map.fromList $ (pid &&& id) <$> products
-                )
+              ( defaults
+              , Map.fromList $ (pid &&& id) <$> products
+              )
             )
 
 -- | Information about a particular LIFX product.
@@ -67,7 +67,7 @@ productLookup vendor product versionMinor versionMajor =
                                     upgrades
                         }
   where
-    --TODO RecordDotSyntax
+    -- TODO RecordDotSyntax
     completeFeatures
         Features
             { ..
