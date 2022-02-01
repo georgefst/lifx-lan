@@ -1664,6 +1664,440 @@ productInfo =
                     }
                 , upgrades = []
                 }
+            , ProductInfo
+                { pid = 115
+                , name = "LIFX Switch"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Just True
+                    , buttons = Just True
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Nothing
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 116
+                , name = "LIFX Switch"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Just True
+                    , buttons = Just True
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Nothing
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 117
+                , name = "LIFX Z"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just True
+                    , temperatureRange = Just
+                        ( 1500
+                        , 9000
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 118
+                , name = "LIFX Z"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just True
+                    , temperatureRange = Just
+                        ( 1500
+                        , 9000
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 119
+                , name = "LIFX Beam"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just True
+                    , temperatureRange = Just
+                        ( 1500
+                        , 9000
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 120
+                , name = "LIFX Beam"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just True
+                    , temperatureRange = Just
+                        ( 1500
+                        , 9000
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 123
+                , name = "LIFX Color US"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Just
+                        ( 1500
+                        , 9000
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 124
+                , name = "LIFX Color Intl"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Just
+                        ( 1500
+                        , 9000
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 125
+                , name = "LIFX White to Warm US"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Just
+                        ( 1500
+                        , 9000
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 126
+                , name = "LIFX White to Warm Intl"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Just
+                        ( 1500
+                        , 9000
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 127
+                , name = "LIFX White US"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Just
+                        ( 2700
+                        , 2700
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 128
+                , name = "LIFX White Intl"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Just
+                        ( 2700
+                        , 2700
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 129
+                , name = "LIFX Color US"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Just
+                        ( 1500
+                        , 9000
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 130
+                , name = "LIFX Color Intl"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Just
+                        ( 1500
+                        , 9000
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 131
+                , name = "LIFX White To Warm US"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Just
+                        ( 1500
+                        , 9000
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 132
+                , name = "LIFX White To Warm Intl"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Just
+                        ( 1500
+                        , 9000
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 133
+                , name = "LIFX White US"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Just
+                        ( 2700
+                        , 2700
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 134
+                , name = "LIFX White Intl"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just False
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Just
+                        ( 2700
+                        , 2700
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 135
+                , name = "LIFX GU10 Color US"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Just
+                        ( 1500
+                        , 9000
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 136
+                , name = "LIFX GU10 Color Intl"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Just
+                        ( 1500
+                        , 9000
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 137
+                , name = "LIFX Candle Color US"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just True
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Just
+                        ( 1500
+                        , 9000
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 138
+                , name = "LIFX Candle Color Intl"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just True
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Just
+                        ( 1500
+                        , 9000
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
             ]
         }
     ]
