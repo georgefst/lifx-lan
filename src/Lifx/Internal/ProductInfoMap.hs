@@ -1,9 +1,6 @@
 module Lifx.Internal.ProductInfoMap where
 
 import Control.Applicative
-import Data.Either.Extra
-import Data.Foldable hiding (product)
-import Data.Function
 import Data.Functor
 import Data.Maybe
 import Data.Tuple.Extra
@@ -17,9 +14,6 @@ import GHC.Generics (Generic)
 import Lifx.Internal.Product
 import Lifx.Internal.ProductInfo
 
--- TODO RecordDotSyntax can make this and other hiding unnecessary (we could also use "id" instead of "productId"...)
-import Prelude hiding (product)
-
 productInfoMap :: Map Word32 (Features, Map Word32 ProductInfo)
 productInfoMap =
     Map.fromList $
@@ -27,14 +21,14 @@ productInfoMap =
             ( vid
             ,
               ( defaults
-              , Map.fromList $ (pid &&& id) <$> products
+              , Map.fromList $ ((.pid) &&& id) <$> products
               )
             )
 
 -- | Information about a particular LIFX product.
 data Product = Product
     { name :: Text
-    , productId :: Word32
+    , id :: Word32
     , features :: Features
     }
     deriving (Eq, Ord, Show, Generic)
@@ -45,16 +39,16 @@ data ProductLookupError
     deriving (Eq, Ord, Show, Generic)
 
 productLookup :: Word32 -> Word32 -> Word16 -> Word16 -> Either ProductLookupError Product
-productLookup vendor product versionMinor versionMajor =
+productLookup vendor prod versionMinor versionMajor =
     case productInfoMap !? vendor of
         Nothing -> Left $ UnknownVendorId vendor
-        Just (defaults, products) -> case products !? product of
-            Nothing -> Left $ UnknownProductId product
+        Just (defaults, products) -> case products !? prod of
+            Nothing -> Left $ UnknownProductId prod
             Just ProductInfo{features = originalFeatures, ..} ->
                 pure
                     Product
                         { name
-                        , productId = product
+                        , id = prod
                         , features =
                             completeFeatures defaults $
                                 foldl
@@ -67,61 +61,30 @@ productLookup vendor product versionMinor versionMajor =
                                     upgrades
                         }
   where
-    -- TODO RecordDotSyntax
-    completeFeatures
+    completeFeatures f pf =
         Features
-            { ..
+            { hev = fromMaybe f.hev pf.hev
+            , color = fromMaybe f.color pf.color
+            , chain = fromMaybe f.chain pf.chain
+            , matrix = fromMaybe f.matrix pf.matrix
+            , relays = fromMaybe f.relays pf.relays
+            , buttons = fromMaybe f.buttons pf.buttons
+            , infrared = fromMaybe f.infrared pf.infrared
+            , multizone = fromMaybe f.multizone pf.multizone
+            , temperatureRange = pf.temperatureRange <|> f.temperatureRange
+            , extendedMultizone = fromMaybe f.extendedMultizone pf.extendedMultizone
             }
-        PartialFeatures
-            { hev = maybe_hev
-            , color = maybe_color
-            , chain = maybe_chain
-            , matrix = maybe_matrix
-            , relays = maybe_relays
-            , buttons = maybe_buttons
-            , infrared = maybe_infrared
-            , multizone = maybe_multizone
-            , temperatureRange = maybe_temperatureRange
-            , extendedMultizone = maybe_extendedMultizone
-            } =
-            Features
-                { hev = fromMaybe hev maybe_hev
-                , color = fromMaybe color maybe_color
-                , chain = fromMaybe chain maybe_chain
-                , matrix = fromMaybe matrix maybe_matrix
-                , relays = fromMaybe relays maybe_relays
-                , buttons = fromMaybe buttons maybe_buttons
-                , infrared = fromMaybe infrared maybe_infrared
-                , multizone = fromMaybe multizone maybe_multizone
-                , temperatureRange = maybe_temperatureRange <|> temperatureRange
-                , extendedMultizone = fromMaybe extendedMultizone maybe_extendedMultizone
-                }
     -- left-biased
-    addFeatures
+    addFeatures new old =
         PartialFeatures
-            { ..
+            { hev = new.hev <|> old.hev
+            , color = new.color <|> old.color
+            , chain = new.chain <|> old.chain
+            , matrix = new.matrix <|> old.matrix
+            , relays = new.relays <|> old.relays
+            , buttons = new.buttons <|> old.buttons
+            , infrared = new.infrared <|> old.infrared
+            , multizone = new.multizone <|> old.multizone
+            , temperatureRange = new.temperatureRange <|> old.temperatureRange
+            , extendedMultizone = new.extendedMultizone <|> old.extendedMultizone
             }
-        PartialFeatures
-            { hev = old_hev
-            , color = old_color
-            , chain = old_chain
-            , matrix = old_matrix
-            , relays = old_relays
-            , buttons = old_buttons
-            , infrared = old_infrared
-            , multizone = old_multizone
-            , temperatureRange = old_temperatureRange
-            , extendedMultizone = old_extendedMultizone
-            } =
-            PartialFeatures
-                { hev = hev <|> old_hev
-                , color = color <|> old_color
-                , chain = chain <|> old_chain
-                , matrix = matrix <|> old_matrix
-                , relays = relays <|> old_relays
-                , buttons = buttons <|> old_buttons
-                , infrared = infrared <|> old_infrared
-                , multizone = multizone <|> old_multizone
-                , temperatureRange = temperatureRange <|> old_temperatureRange
-                , extendedMultizone = extendedMultizone <|> old_extendedMultizone
-                }

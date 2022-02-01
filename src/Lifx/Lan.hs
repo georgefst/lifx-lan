@@ -54,7 +54,6 @@ module Lifx.Lan (
     unLifxT,
 ) where
 
-import Control.Applicative
 import Control.Monad
 import Control.Monad.Except
 import Control.Monad.Extra
@@ -130,9 +129,6 @@ import System.Timeout (timeout)
 import Lifx.Internal.Product
 import Lifx.Internal.ProductInfoMap
 
--- TODO RecordDotSyntax can make this and other hiding unnecessary (we could also use "id" instead of "productId"...)
-import Prelude hiding (product)
-
 {- Device -}
 
 -- | A LIFX device, such as a bulb.
@@ -153,7 +149,7 @@ deviceFromAddress :: (Word8, Word8, Word8, Word8) -> Device
 deviceFromAddress = Device . tupleToHostAddress
 
 deviceAddress :: Device -> HostAddress
-deviceAddress = unDevice
+deviceAddress = (.unDevice)
 
 {- Core -}
 
@@ -164,9 +160,10 @@ lifxPort = 56700
 sendMessage :: MonadLifx m => Device -> Message r -> m r
 sendMessage receiver msg = do
     incrementCounter
-    sendMessage' True (unDevice receiver) msg
+    sendMessage' True receiver.unDevice msg
     Dict <- pure $ msgResWitness msg
     getSendResult receiver
+    -- msgResWitness' msg $ (getSendResult receiver :: forall a m r. MessageResult a => m r)
 
 -- | Broadcast a message and wait for responses.
 broadcastMessage :: MonadLifx m => Message r -> m [(Device, r)]
@@ -174,6 +171,9 @@ broadcastMessage msg =
     msgResWitness msg & \Dict ->
         concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList
             <$> broadcastAndGetResult (const $ pure . pure) Nothing msg
+    -- msgResWitness' msg $
+    --     concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList
+    --         <$> broadcastAndGetResult (const $ pure . pure) Nothing msg
 
 {- |
 Search for devices on the local network.
@@ -386,9 +386,9 @@ instance Response StateVersion where
     messageSize = 20
     getBody = do
         vendor <- getWord32le
-        product <- getWord32le
+        p <- getWord32le
         skip 4
-        pure StateVersion{..}
+        pure StateVersion{product = p, ..}
 instance MessageResult StateVersion
 instance Response LightState where
     expectedPacketType = 107
@@ -403,8 +403,16 @@ instance Response LightState where
 instance MessageResult LightState
 
 -- all `Message` response types are instances of `MessageResult`
--- TODO ImpredicativeTypes:
---   msgResWitness :: Message r -> (forall a. MessageResult a => x) -> x
+msgResWitness' :: forall r x. Message r -> (forall a. MessageResult a => x) -> x
+msgResWitness' = flip \f -> \case
+    GetService{} -> f @r
+    GetHostFirmware{} -> f @r
+    GetPower{} -> f @r
+    SetPower{} -> f @r
+    GetVersion{} -> f @r
+    GetColor{} -> f @r
+    SetColor{} -> f @r
+    SetLightPower{} -> f @r
 msgResWitness :: Message r -> Dict (MessageResult r)
 msgResWitness = \case
     GetService{} -> Dict
@@ -422,6 +430,9 @@ data Dict c where
 
 -- | A simple implementation of 'MonadLifx'.
 type Lifx = LifxT IO
+
+unLifxT :: LifxT m a -> (StateT Word8 (ReaderT (Socket, Word32, Int) (ExceptT LifxError m)) a)
+unLifxT = (.unLifxT)
 
 newtype LifxT m a = LifxT
     { unLifxT ::
@@ -666,8 +677,10 @@ putMessagePayload = \case
 getProductInfo :: MonadLifx m => Device -> m Product
 getProductInfo dev = do
     StateHostFirmware{..} <- sendMessage dev GetHostFirmware
-    StateVersion{..} <- sendMessage dev GetVersion
-    either (lifxThrow . ProductLookupError) pure $ productLookup vendor product versionMinor versionMajor
+    -- StateVersion{product = p, ..} <- sendMessage dev GetVersion
+    -- either (lifxThrow . ProductLookupError) pure $ productLookup vendor p versionMinor versionMajor
+    v <- sendMessage dev GetVersion
+    either (lifxThrow . ProductLookupError) pure $ productLookup v.vendor v.product versionMinor versionMajor
 
 {- Util -}
 
