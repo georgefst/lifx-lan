@@ -28,8 +28,8 @@ main = do
     resp <- httpLbs url =<< newManager tlsManagerSettings
     case eitherDecode @[VendorInfo] $ responseBody resp of
         Right xs -> do
-            TL.writeFile ("src" </> "Lifx" </> "ProductInfo.hs") $
-                "module Lifx.ProductInfo where\n\
+            TL.writeFile ("src" </> "Lifx" </> "Internal" </> "ProductInfo.hs") $
+                "module Lifx.Internal.ProductInfo where\n\
                 \\n\
                 \import Lifx.Internal.Product\n\
                 \\n\
