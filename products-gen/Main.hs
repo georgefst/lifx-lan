@@ -29,7 +29,8 @@ main = do
     case eitherDecode @[VendorInfo] $ responseBody resp of
         Right xs -> do
             TL.writeFile ("src" </> "Lifx" </> "Internal" </> "ProductInfo.hs") $
-                "module Lifx.Internal.ProductInfo where\n\
+                "-- | This is auto-generated - see the \"product-gen\" script.\n\
+                \module Lifx.Internal.ProductInfo where\n\
                 \\n\
                 \import Lifx.Internal.Product\n\
                 \\n\
