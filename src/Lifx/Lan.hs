@@ -18,6 +18,7 @@ main = runLifx do
         sendMessage d $ SetColor hsbk{brightness = maxBound \`div\` 2} 3
 @
 -}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 module Lifx.Lan (
     Device,
     deviceAddress,
