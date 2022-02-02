@@ -1,5 +1,8 @@
 # Revision history for lifx-lan
 
+## 0.6.2 -- 2022-02-02
+- Update to latest products list.
+
 ## 0.6.1 -- 2022-02-01
 - Update to latest products list.
 
