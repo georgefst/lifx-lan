@@ -1714,7 +1714,7 @@ productInfo =
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = Nothing
+                    , extendedMultizone = Just True
                     }
                 , upgrades = []
                 }
@@ -1734,7 +1734,7 @@ productInfo =
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = Nothing
+                    , extendedMultizone = Just True
                     }
                 , upgrades = []
                 }
@@ -1754,7 +1754,7 @@ productInfo =
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = Nothing
+                    , extendedMultizone = Just True
                     }
                 , upgrades = []
                 }
@@ -1774,7 +1774,7 @@ productInfo =
                         ( 1500
                         , 9000
                         )
-                    , extendedMultizone = Nothing
+                    , extendedMultizone = Just True
                     }
                 , upgrades = []
                 }
