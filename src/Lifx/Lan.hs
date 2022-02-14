@@ -21,9 +21,6 @@ main = runLifx do
 module Lifx.Lan (
     Device,
     deviceAddress,
-    sendMessage,
-    broadcastMessage,
-    discoverDevices,
     Message (..),
     HSBK (..),
     Lifx,
@@ -60,6 +57,7 @@ import Control.Monad.Extra
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Trans.Maybe
+import Data.Composition
 import Data.Either.Extra
 import Data.Fixed
 import Data.Foldable
@@ -154,32 +152,6 @@ deviceAddress = (.unwrap)
 
 lifxPort :: PortNumber
 lifxPort = 56700
-
--- | Send a message and wait for a response.
-sendMessage :: MonadLifx m => Device -> Message r -> m r
-sendMessage receiver = msgResWitness \msg -> do
-    incrementCounter
-    sendMessage' True receiver.unwrap msg
-    getSendResult receiver
-
--- | Broadcast a message and wait for responses.
-broadcastMessage :: forall m r. MonadLifx m => Message r -> m [(Device, r)]
-broadcastMessage = msgResWitness \msg ->
-    concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList
-        <$> broadcastAndGetResult (const $ pure . pure) Nothing msg
-
-{- |
-Search for devices on the local network.
-If an integer argument is given, wait until we have found that number of devices -
-otherwise just keep waiting until timeout.
--}
-discoverDevices :: MonadLifx m => Maybe Int -> m [Device]
-discoverDevices nDevices = Map.keys <$> broadcastAndGetResult f p GetService
-  where
-    f _addr StateService{..} = do
-        checkPort port
-        pure . guard $ service == ServiceUDP
-    p = nDevices <&> \n -> (>= n) . length
 
 -- | A colour. See https://lan.developer.lifx.com/docs/representing-color-with-hsbk.
 data HSBK = HSBK
@@ -279,23 +251,23 @@ data LifxError
 {- Message responses -}
 
 class MessageResult a where
-    getSendResult :: MonadLifx m => Device -> m a
-    default getSendResult :: (MonadLifx m, Response a) => Device -> m a
+    getSendResult :: MonadLifxIO m => Device -> m a
+    default getSendResult :: (MonadLifxIO m, Response a) => Device -> m a
     getSendResult receiver = untilJustM do
         timeoutDuration <- getTimeout
         (bs, sender0) <- throwEither $ maybeToEither RecvTimeout <$> receiveMessage timeoutDuration (messageSize @a)
         sender <- hostAddressFromSock sender0
         res <- decodeMessage @a bs
-        when (isJust res && sender /= deviceAddress receiver) $ lifxThrow $ WrongSender receiver sender
+        when (isJust res && sender /= deviceAddress receiver) $ lifxThrowIO $ WrongSender receiver sender
         pure res
       where
         throwEither x =
             x >>= \case
-                Left e -> lifxThrow e
+                Left e -> lifxThrowIO e
                 Right r -> pure r
 
     broadcastAndGetResult ::
-        MonadLifx m =>
+        MonadLifxIO m =>
         -- | Transform output and discard messages which return 'Nothing'.
         (HostAddress -> a -> m (Maybe b)) ->
         -- | Return once this predicate over received messages passes. Otherwise just keep waiting until timeout.
@@ -303,7 +275,7 @@ class MessageResult a where
         Message r ->
         m (Map Device (NonEmpty b))
     default broadcastAndGetResult ::
-        (MonadLifx m, Response a) =>
+        (MonadLifxIO m, Response a) =>
         (HostAddress -> a -> m (Maybe b)) ->
         Maybe (Map HostAddress (NonEmpty b) -> Bool) ->
         Message r ->
@@ -330,7 +302,7 @@ class MessageResult a where
                             maybe (pure False) gets maybeFinished
                         Nothing -> do
                             -- if we were waiting for a predicate to pass, then we've timed out
-                            when (isJust maybeFinished) $ lifxThrow . BroadcastTimeout =<< gets Map.keys
+                            when (isJust maybeFinished) $ lifxThrowIO . BroadcastTimeout =<< gets Map.keys
                             pure True
 
 class Response a where
@@ -456,14 +428,66 @@ runLifxT timeoutDuration (LifxT x) = do
     source <- randomIO
     runExceptT $ runReaderT (evalStateT x 0) (sock, source, timeoutDuration)
 
+class Monad m => MonadLifx m where
+    -- | Send a message and wait for a response.
+    sendMessage :: Device -> Message r -> m r
+
+    -- | Broadcast a message and wait for responses.
+    broadcastMessage :: Message r -> m [(Device, r)]
+
+    -- | Search for devices on the local network.
+    -- If an integer argument is given, wait until we have found that number of devices -
+    -- otherwise just keep waiting until timeout.
+    discoverDevices :: Maybe Int -> m [Device]
+
+    lifxThrow :: LifxError -> m a
+
+instance MonadIO m => MonadLifx (LifxT m) where
+    sendMessage receiver = msgResWitness \msg -> do
+        incrementCounter
+        sendMessage' True receiver.unwrap msg
+        getSendResult receiver
+
+    broadcastMessage = msgResWitness \msg ->
+        concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList
+            <$> broadcastAndGetResult (const $ pure . pure) Nothing msg
+
+    discoverDevices nDevices = Map.keys <$> broadcastAndGetResult f p GetService
+      where
+        f _addr StateService{..} = do
+            checkPort port
+            pure . guard $ service == ServiceUDP
+        p = nDevices <&> \n -> (>= n) . length
+    lifxThrow = lifxThrowIO
+instance MonadLifx m => MonadLifx (MaybeT m) where
+    sendMessage = lift .: sendMessage
+    broadcastMessage = lift . broadcastMessage
+    discoverDevices = lift . discoverDevices
+    lifxThrow = lift . lifxThrow
+instance MonadLifx m => MonadLifx (ExceptT e m) where
+    sendMessage = lift .: sendMessage
+    broadcastMessage = lift . broadcastMessage
+    discoverDevices = lift . discoverDevices
+    lifxThrow = lift . lifxThrow
+instance MonadLifx m => MonadLifx (StateT s m) where
+    sendMessage = lift .: sendMessage
+    broadcastMessage = lift . broadcastMessage
+    discoverDevices = lift . discoverDevices
+    lifxThrow = lift . lifxThrow
+instance MonadLifx m => MonadLifx (ReaderT e m) where
+    sendMessage = lift .: sendMessage
+    broadcastMessage = lift . broadcastMessage
+    discoverDevices = lift . discoverDevices
+    lifxThrow = lift . lifxThrow
+
 -- | A monad for sending and receiving LIFX messages.
-class MonadIO m => MonadLifx m where
+class MonadIO m => MonadLifxIO m where
     getSocket :: m Socket
     getSource :: m Word32
     getTimeout :: m Int
     incrementCounter :: m ()
     getCounter :: m Word8
-    lifxThrow :: LifxError -> m a
+    lifxThrowIO :: LifxError -> m a
     handleOldMessage ::
         -- | expected counter value
         Word8 ->
@@ -476,41 +500,20 @@ class MonadIO m => MonadLifx m where
         m ()
     handleOldMessage _ _ _ _ = pure ()
 
-instance MonadIO m => MonadLifx (LifxT m) where
+instance MonadIO m => MonadLifxIO (LifxT m) where
     getSocket = LifxT $ asks fst3
     getSource = LifxT $ asks snd3
     getTimeout = LifxT $ asks thd3
     incrementCounter = LifxT $ modify succ'
     getCounter = LifxT $ gets id
-    lifxThrow = LifxT . throwError
-instance MonadLifx m => MonadLifx (MaybeT m) where
+    lifxThrowIO = LifxT . throwError
+instance MonadLifxIO m => MonadLifxIO (StateT s m) where
     getSocket = lift getSocket
     getSource = lift getSource
     getTimeout = lift getTimeout
     incrementCounter = lift incrementCounter
     getCounter = lift getCounter
-    lifxThrow = lift . lifxThrow
-instance MonadLifx m => MonadLifx (ExceptT e m) where
-    getSocket = lift getSocket
-    getSource = lift getSource
-    getTimeout = lift getTimeout
-    incrementCounter = lift incrementCounter
-    getCounter = lift getCounter
-    lifxThrow = lift . lifxThrow
-instance MonadLifx m => MonadLifx (StateT s m) where
-    getSocket = lift getSocket
-    getSource = lift getSource
-    getTimeout = lift getTimeout
-    incrementCounter = lift incrementCounter
-    getCounter = lift getCounter
-    lifxThrow = lift . lifxThrow
-instance MonadLifx m => MonadLifx (ReaderT e m) where
-    getSocket = lift getSocket
-    getSource = lift getSource
-    getTimeout = lift getTimeout
-    incrementCounter = lift incrementCounter
-    getCounter = lift getCounter
-    lifxThrow = lift . lifxThrow
+    lifxThrowIO = lift . lifxThrowIO
 
 {- Low level -}
 
@@ -688,11 +691,11 @@ nominalDiffTimeToInt t = fromInteger n
 untilM :: Monad m => m Bool -> m ()
 untilM = whileM . fmap not
 
-checkPort :: MonadLifx f => PortNumber -> f ()
-checkPort port = when (port /= lifxPort) . lifxThrow $ UnexpectedPort port
+checkPort :: MonadLifxIO f => PortNumber -> f ()
+checkPort port = when (port /= lifxPort) . lifxThrowIO $ UnexpectedPort port
 
 -- these helpers are all used by 'sendMessage' and 'broadcastMessage'
-decodeMessage :: forall b m. (Response b, MonadLifx m) => BS.ByteString -> m (Maybe b) -- Nothing means counter mismatch
+decodeMessage :: forall b m. (Response b, MonadLifxIO m) => BS.ByteString -> m (Maybe b) -- Nothing means counter mismatch
 decodeMessage bs = do
     counter <- getCounter
     case runGetOrFail Binary.get $ BL.fromStrict bs of
@@ -701,14 +704,14 @@ decodeMessage bs = do
             if sequenceCounter /= counter
                 then handleOldMessage counter sequenceCounter packetType bs' >> pure Nothing
                 else do
-                    when (packetType /= expectedPacketType @b) . lifxThrow $
+                    when (packetType /= expectedPacketType @b) . lifxThrowIO $
                         WrongPacketType (expectedPacketType @b) packetType
                     case runGetOrFail getBody bs' of
                         Left e -> throwDecodeFailure e
                         Right (_, _, res) -> pure $ Just res
   where
-    throwDecodeFailure (bs', bo, e) = lifxThrow $ DecodeFailure (BL.toStrict bs') bo e
-sendMessage' :: MonadLifx m => Bool -> HostAddress -> Message r -> m ()
+    throwDecodeFailure (bs', bo, e) = lifxThrowIO $ DecodeFailure (BL.toStrict bs') bo e
+sendMessage' :: MonadLifxIO m => Bool -> HostAddress -> Message r -> m ()
 sendMessage' tagged receiver msg = do
     sock <- getSocket
     counter <- getCounter
@@ -718,11 +721,11 @@ sendMessage' tagged receiver msg = do
             sock
             (BL.toStrict $ encodeMessage tagged False counter source msg)
             (SockAddrInet lifxPort receiver)
-hostAddressFromSock :: MonadLifx m => SockAddr -> m HostAddress
+hostAddressFromSock :: MonadLifxIO m => SockAddr -> m HostAddress
 hostAddressFromSock = \case
     SockAddrInet port ha -> checkPort port >> pure ha
-    addr -> lifxThrow $ UnexpectedSockAddrType addr
-receiveMessage :: MonadLifx m => Int -> Int -> m (Maybe (BS.ByteString, SockAddr))
+    addr -> lifxThrowIO $ UnexpectedSockAddrType addr
+receiveMessage :: MonadLifxIO m => Int -> Int -> m (Maybe (BS.ByteString, SockAddr))
 receiveMessage t size = do
     sock <- getSocket
     liftIO
@@ -730,7 +733,7 @@ receiveMessage t size = do
         . recvFrom sock
         $ headerSize + size
 
-broadcast :: MonadLifx m => Message r -> m ()
+broadcast :: MonadLifxIO m => Message r -> m ()
 broadcast msg = do
     incrementCounter
     sendMessage' False (tupleToHostAddress (255, 255, 255, 255)) msg

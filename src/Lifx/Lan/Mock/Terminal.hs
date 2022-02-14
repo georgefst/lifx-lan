@@ -1,4 +1,4 @@
-module Lifx.Lan.Mock.Terminal (Mock, runMock, sendMessageMock) where
+module Lifx.Lan.Mock.Terminal (Mock, runMock) where
 
 import Control.Applicative
 import Control.Monad.Except
@@ -31,40 +31,41 @@ newtype Mock a = Mock {unMock :: StateT (Map Device (Bool, HSBK)) (ReaderT [Devi
 runMock :: [Device] -> Mock a -> IO a
 runMock ds = flip runReaderT ds . flip evalStateT (Map.fromList $ zip ds $ repeat (True, HSBK 0 0 0 0)) . (.unMock)
 
--- TODO unify this with normal `sendMessage` somehow
--- e.g. by allowing `MonadLifx` to be specified by just `sendMessage`
-sendMessageMock :: Device -> Message r -> Mock r
-sendMessageMock d = \case
-    GetService -> err
-    GetHostFirmware -> err
-    GetPower -> err
-    SetPower b -> do
-        modify $ Map.update (pure . first (const b)) d
-        out
-    GetVersion -> err
-    GetColor -> err
-    SetColor c _t -> do
-        modify $ Map.update (pure . second (const c)) d
-        out
-    SetLightPower _ _ -> err >> out
-  where
-    err = error "message unimplemented" -- TODO
-    out = do
-        ds <- ask
-        for_ ds \d' -> do
-            sgr <- gets $ maybe [] mkSGR . Map.lookup d'
-            liftIO do
-                setSGR sgr
-                putStr
-                    . maybe ("error: couldn't get terminal size") (flip replicate ' ' . (`div` length ds) . snd)
-                    =<< getTerminalSize
-                setSGR []
-        liftIO $ putStrLn ""
+instance MonadLifx Mock where
+    sendMessage d = \case
+        GetService -> err
+        GetHostFirmware -> err
+        GetPower -> err
+        SetPower b -> do
+            modify $ Map.update (pure . first (const b)) d
+            out
+        GetVersion -> err
+        GetColor -> err
+        SetColor c _t -> do
+            modify $ Map.update (pure . second (const c)) d
+            out
+        SetLightPower _ _ -> err >> out
       where
-        mkSGR (p, c) =
-            if p
-                then [SetRGBColor Background . uncurryRGB sRGB $ hsbkToRgb c]
-                else []
+        err = error "message unimplemented" -- TODO
+        out = do
+            ds <- ask
+            for_ ds \d' -> do
+                sgr <- gets $ maybe [] mkSGR . Map.lookup d'
+                liftIO do
+                    setSGR sgr
+                    putStr
+                        . maybe ("error: couldn't get terminal size") (flip replicate ' ' . (`div` length ds) . snd)
+                        =<< getTerminalSize
+                    setSGR []
+            liftIO $ putStrLn ""
+          where
+            mkSGR (p, c) =
+                if p
+                    then [SetRGBColor Background . uncurryRGB sRGB $ hsbkToRgb c]
+                    else []
+    broadcastMessage m = ask >>= traverse \d -> (d,) <$> sendMessage d m
+    discoverDevices x = maybe id take x <$> ask
+    lifxThrow = error . show -- TODO I'm sure we can do better
 
 -- TODO duplicated from lifx-manager - put this somewhere useful
 hsbkToRgb :: HSBK -> RGB Float
