@@ -54,7 +54,6 @@ module Lifx.Lan (
     unLifxT,
 ) where
 
-import Control.Applicative
 import Control.Monad
 import Control.Monad.Except
 import Control.Monad.Extra
@@ -63,10 +62,10 @@ import Control.Monad.State
 import Control.Monad.Trans.Maybe
 import Data.Either.Extra
 import Data.Fixed
-import Data.Foldable hiding (product)
+import Data.Foldable
 import Data.Function
 import Data.Functor
-import Data.List hiding (product)
+import Data.List
 import Data.Maybe
 import Data.Tuple.Extra
 import Data.Word
@@ -130,13 +129,10 @@ import System.Timeout (timeout)
 import Lifx.Internal.Product
 import Lifx.Internal.ProductInfoMap
 
--- TODO RecordDotSyntax can make this and other hiding unnecessary (we could also use "id" instead of "productId"...)
-import Prelude hiding (product)
-
 {- Device -}
 
 -- | A LIFX device, such as a bulb.
-newtype Device = Device {unDevice :: HostAddress}
+newtype Device = Device {unwrap :: HostAddress}
     deriving newtype (Eq, Ord)
 
 instance Show Device where
@@ -153,7 +149,7 @@ deviceFromAddress :: (Word8, Word8, Word8, Word8) -> Device
 deviceFromAddress = Device . tupleToHostAddress
 
 deviceAddress :: Device -> HostAddress
-deviceAddress = unDevice
+deviceAddress = (.unwrap)
 
 {- Core -}
 
@@ -164,7 +160,7 @@ lifxPort = 56700
 sendMessage :: MonadLifx m => Device -> Message r -> m r
 sendMessage receiver msg = do
     incrementCounter
-    sendMessage' True (unDevice receiver) msg
+    sendMessage' True receiver.unwrap msg
     Dict <- pure $ msgResWitness msg
     getSendResult receiver
 
@@ -386,9 +382,9 @@ instance Response StateVersion where
     messageSize = 20
     getBody = do
         vendor <- getWord32le
-        product <- getWord32le
+        p <- getWord32le
         skip 4
-        pure StateVersion{..}
+        pure StateVersion{product = p, ..}
 instance MessageResult StateVersion
 instance Response LightState where
     expectedPacketType = 107
@@ -423,8 +419,11 @@ data Dict c where
 -- | A simple implementation of 'MonadLifx'.
 type Lifx = LifxT IO
 
+unLifxT :: LifxT m a -> (StateT Word8 (ReaderT (Socket, Word32, Int) (ExceptT LifxError m)) a)
+unLifxT = (.unwrap)
+
 newtype LifxT m a = LifxT
-    { unLifxT ::
+    { unwrap ::
         StateT
             Word8
             ( ReaderT
@@ -666,8 +665,8 @@ putMessagePayload = \case
 getProductInfo :: MonadLifx m => Device -> m Product
 getProductInfo dev = do
     StateHostFirmware{..} <- sendMessage dev GetHostFirmware
-    StateVersion{..} <- sendMessage dev GetVersion
-    either (lifxThrow . ProductLookupError) pure $ productLookup vendor product versionMinor versionMajor
+    v <- sendMessage dev GetVersion
+    either (lifxThrow . ProductLookupError) pure $ productLookup v.vendor v.product versionMinor versionMajor
 
 {- Util -}
 
