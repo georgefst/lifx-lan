@@ -51,18 +51,18 @@ instance MonadLifx Mock where
         GetPower -> getState <&> \LightState{..} -> StatePower{..}
         SetPower b -> do
             modify $ Map.update (pure . \LightState{..} -> LightState{power = fromIntegral $ fromEnum b, ..}) d
-            out
+            refresh
         GetVersion -> err
         GetColor -> getState
         SetColor c _t -> do
             modify $ Map.update (pure . \LightState{..} -> LightState{hsbk = c, ..}) d
-            out
-        SetLightPower _ _ -> err >> out
+            refresh
+        SetLightPower _ _ -> err >> refresh
       where
         err = error "message unimplemented" -- TODO
         getState :: Mock LightState
         getState = maybe (lifxThrow RecvTimeout) pure =<< gets (Map.lookup d)
-        out = do
+        refresh = do
             ds <- ask
             for_ ds \d' -> do
                 sgr <- gets $ maybe [] mkSGR . Map.lookup d'
