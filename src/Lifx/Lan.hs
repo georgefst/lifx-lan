@@ -63,7 +63,6 @@ import Control.Monad.Trans.Maybe
 import Data.Either.Extra
 import Data.Fixed
 import Data.Foldable
-import Data.Function
 import Data.Functor
 import Data.List
 import Data.Maybe
@@ -158,18 +157,16 @@ lifxPort = 56700
 
 -- | Send a message and wait for a response.
 sendMessage :: MonadLifx m => Device -> Message r -> m r
-sendMessage receiver msg = do
+sendMessage receiver = msgResWitness \msg -> do
     incrementCounter
     sendMessage' True receiver.unwrap msg
-    Dict <- pure $ msgResWitness msg
     getSendResult receiver
 
 -- | Broadcast a message and wait for responses.
-broadcastMessage :: MonadLifx m => Message r -> m [(Device, r)]
-broadcastMessage msg =
-    msgResWitness msg & \Dict ->
-        concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList
-            <$> broadcastAndGetResult (const $ pure . pure) Nothing msg
+broadcastMessage :: forall m r. MonadLifx m => Message r -> m [(Device, r)]
+broadcastMessage = msgResWitness \msg ->
+    concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList
+        <$> broadcastAndGetResult (const $ pure . pure) Nothing msg
 
 {- |
 Search for devices on the local network.
@@ -398,21 +395,16 @@ instance Response LightState where
         pure LightState{..}
 instance MessageResult LightState
 
--- all `Message` response types are instances of `MessageResult`
--- TODO ImpredicativeTypes:
---   msgResWitness :: Message r -> (forall a. MessageResult a => x) -> x
-msgResWitness :: Message r -> Dict (MessageResult r)
-msgResWitness = \case
-    GetService{} -> Dict
-    GetHostFirmware{} -> Dict
-    GetPower{} -> Dict
-    SetPower{} -> Dict
-    GetVersion{} -> Dict
-    GetColor{} -> Dict
-    SetColor{} -> Dict
-    SetLightPower{} -> Dict
-data Dict c where
-    Dict :: c => Dict c
+msgResWitness :: (MessageResult r => Message r -> a) -> (Message r -> a)
+msgResWitness f m = case m of
+    GetService{} -> f m
+    GetHostFirmware{} -> f m
+    GetPower{} -> f m
+    SetPower{} -> f m
+    GetVersion{} -> f m
+    GetColor{} -> f m
+    SetColor{} -> f m
+    SetLightPower{} -> f m
 
 {- Monad -}
 

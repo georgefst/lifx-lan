@@ -57,6 +57,7 @@ library
         GADTs
         GeneralizedNewtypeDeriving
         ImportQualifiedPost
+        ImpredicativeTypes
         LambdaCase
         MultiParamTypeClasses
         NamedFieldPuns
