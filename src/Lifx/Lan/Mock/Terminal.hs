@@ -7,10 +7,13 @@ import Control.Monad.State
 import Data.Colour.RGBSpace
 import Data.Colour.SRGB
 import Data.Foldable
+import Data.Functor
 import Data.Ord
 import Data.Tuple.Extra
 import Data.Word
 
+import Data.ByteString (ByteString)
+import Data.ByteString.Char8 qualified as BS
 import Data.Colour.RGBSpace.HSV (hsv)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
@@ -18,35 +21,47 @@ import System.Console.ANSI hiding (SetColor)
 
 import Lifx.Lan
 
-newtype Mock a = Mock {unMock :: StateT (Map Device (Bool, HSBK)) (ReaderT [Device] IO) a}
+newtype Mock a = Mock (StateT (Map Device LightState) (ReaderT [Device] IO) a)
     deriving newtype
         ( Functor
         , Applicative
         , Monad
         , MonadIO
         , MonadReader [Device]
-        , MonadState (Map Device (Bool, HSBK))
+        , MonadState (Map Device LightState)
         )
 
-runMock :: [Device] -> Mock a -> IO a
-runMock ds = flip runReaderT ds . flip evalStateT (Map.fromList $ zip ds $ repeat (True, HSBK 0 0 0 0)) . (.unMock)
+runMock :: [(Device, ByteString)] -> Mock a -> IO a
+runMock ds (Mock x) = do
+    mw <- fmap snd <$> getTerminalSize
+    for_ ds \(_, d) ->
+        BS.putStr $
+            d <> BS.replicate (maybe 1 (\w -> (w `div` length ds) - BS.length d) mw) ' '
+    putStrLn ""
+    flip runReaderT (fst <$> ds)
+        . flip
+            evalStateT
+            (Map.fromList $ ds <&> second (LightState (HSBK 0 0 0 0) 1))
+        $ x
 
 instance MonadLifx Mock where
     sendMessage d = \case
         GetService -> err
         GetHostFirmware -> err
-        GetPower -> err
+        GetPower -> getState <&> \LightState{..} -> StatePower{..}
         SetPower b -> do
-            modify $ Map.update (pure . first (const b)) d
+            modify $ Map.update (pure . \LightState{..} -> LightState{power = fromIntegral $ fromEnum b, ..}) d
             out
         GetVersion -> err
-        GetColor -> err
+        GetColor -> getState
         SetColor c _t -> do
-            modify $ Map.update (pure . second (const c)) d
+            modify $ Map.update (pure . \LightState{..} -> LightState{hsbk = c, ..}) d
             out
         SetLightPower _ _ -> err >> out
       where
         err = error "message unimplemented" -- TODO
+        getState :: Mock LightState
+        getState = maybe (lifxThrow RecvTimeout) pure =<< gets (Map.lookup d)
         out = do
             ds <- ask
             for_ ds \d' -> do
@@ -59,9 +74,9 @@ instance MonadLifx Mock where
                     setSGR []
             liftIO $ putStrLn ""
           where
-            mkSGR (p, c) =
-                if p
-                    then [SetRGBColor Background . uncurryRGB sRGB $ hsbkToRgb c]
+            mkSGR LightState{..} =
+                if power /= 0
+                    then [SetRGBColor Background . uncurryRGB sRGB $ hsbkToRgb hsbk]
                     else []
     broadcastMessage m = ask >>= traverse \d -> (d,) <$> sendMessage d m
     discoverDevices x = maybe id take x <$> ask
