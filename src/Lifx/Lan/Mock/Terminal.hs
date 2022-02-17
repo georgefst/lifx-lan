@@ -1,3 +1,6 @@
+-- TODO remove when `OverloadedRecordUpdate` is fully implemented (hopefully 9.4), and remove type applications
+{-# OPTIONS_GHC -Wno-ambiguous-fields #-}
+
 module Lifx.Lan.Mock.Terminal (Mock, runMock) where
 
 import Control.Applicative
@@ -51,10 +54,10 @@ instance MonadLifx Mock where
             GetService -> err
             GetHostFirmware -> err
             GetPower -> pure $ StatePower s.power
-            SetPower b -> modify $ Map.update (pure . \LightState{..} -> LightState{power = fromIntegral $ fromEnum b, ..}) d
+            SetPower power -> modify $ Map.insert @_ @LightState d s{power = fromIntegral $ fromEnum power}
             GetVersion -> err
             GetColor -> pure s
-            SetColor c _t -> modify $ Map.update (pure . \LightState{..} -> LightState{hsbk = c, ..}) d
+            SetColor hsbk _t -> modify $ Map.insert d s{hsbk}
             SetLightPower _ _ -> err
         ds <- ask
         for_ ds \d' -> do
