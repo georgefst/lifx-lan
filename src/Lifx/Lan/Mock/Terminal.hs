@@ -47,37 +47,32 @@ runMock ds (Mock x) = do
 instance MonadLifx Mock where
     sendMessage d m = do
         s <- maybe (lifxThrow RecvTimeout) pure =<< gets (Map.lookup d)
-        case m of
+        r <- case m of
             GetService -> err
             GetHostFirmware -> err
             GetPower -> pure $ StatePower s.power
-            SetPower b -> do
-                modify $ Map.update (pure . \LightState{..} -> LightState{power = fromIntegral $ fromEnum b, ..}) d
-                refresh
+            SetPower b -> modify $ Map.update (pure . \LightState{..} -> LightState{power = fromIntegral $ fromEnum b, ..}) d
             GetVersion -> err
             GetColor -> pure s
-            SetColor c _t -> do
-                modify $ Map.update (pure . \LightState{..} -> LightState{hsbk = c, ..}) d
-                refresh
-            SetLightPower _ _ -> err >> refresh
+            SetColor c _t -> modify $ Map.update (pure . \LightState{..} -> LightState{hsbk = c, ..}) d
+            SetLightPower _ _ -> err
+        ds <- ask
+        for_ ds \d' -> do
+            sgr <- gets $ maybe [] mkSGR . Map.lookup d'
+            liftIO do
+                setSGR sgr
+                putStr
+                    . maybe ("error: couldn't get terminal size") (flip replicate ' ' . (`div` length ds) . snd)
+                    =<< getTerminalSize
+                setSGR []
+        liftIO $ putStrLn ""
+        pure r
       where
+        mkSGR LightState{..} =
+            if power /= 0
+                then [SetRGBColor Background . uncurryRGB sRGB $ hsbkToRgb hsbk]
+                else []
         err = error "message unimplemented" -- TODO
-        refresh = do
-            ds <- ask
-            for_ ds \d' -> do
-                sgr <- gets $ maybe [] mkSGR . Map.lookup d'
-                liftIO do
-                    setSGR sgr
-                    putStr
-                        . maybe ("error: couldn't get terminal size") (flip replicate ' ' . (`div` length ds) . snd)
-                        =<< getTerminalSize
-                    setSGR []
-            liftIO $ putStrLn ""
-          where
-            mkSGR LightState{..} =
-                if power /= 0
-                    then [SetRGBColor Background . uncurryRGB sRGB $ hsbkToRgb hsbk]
-                    else []
     broadcastMessage m = ask >>= traverse \d -> (d,) <$> sendMessage d m
     discoverDevices x = maybe id take x <$> ask
     lifxThrow = error . show -- TODO I'm sure we can do better
