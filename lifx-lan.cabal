@@ -18,6 +18,7 @@ library
     exposed-modules:
         Lifx.Lan
         Lifx.Lan.Mock.Terminal
+        Lifx.Lan.Internal
         Lifx.Internal.Product
         Lifx.Internal.ProductInfo
         Lifx.Internal.ProductInfoMap

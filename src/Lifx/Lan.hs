@@ -25,7 +25,7 @@ module Lifx.Lan (
     HSBK (..),
     Lifx,
     runLifx,
-    LifxT (LifxT),
+    LifxT,
     runLifxT,
     LifxError (..),
     ProductLookupError (..),
@@ -48,7 +48,6 @@ module Lifx.Lan (
     deviceFromAddress,
     encodeMessage,
     Header (..),
-    unLifxT,
 ) where
 
 import Control.Monad
@@ -62,16 +61,15 @@ import Data.Either.Extra
 import Data.Fixed
 import Data.Foldable
 import Data.Functor
-import Data.List
 import Data.Maybe
-import Data.Tuple.Extra
+import Data.Time
 import Data.Word
+import Network.Socket
 import System.IO.Error
 
 import Data.Binary (Binary)
 import Data.Binary qualified as Binary
 import Data.Binary.Get (
-    ByteOffset,
     Get,
     getByteString,
     getWord16le,
@@ -96,44 +94,16 @@ import Data.ByteString.Lazy qualified as BL
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
-import Data.Time (
-    NominalDiffTime,
-    diffUTCTime,
-    getCurrentTime,
-    nominalDiffTimeToSeconds,
- )
 import GHC.Generics (Generic)
-import Network.Socket (
-    Family (AF_INET),
-    HostAddress,
-    PortNumber,
-    SockAddr (SockAddrInet),
-    Socket,
-    SocketOption (Broadcast),
-    SocketType (Datagram),
-    bind,
-    defaultPort,
-    defaultProtocol,
-    hostAddressToTuple,
-    setSocketOption,
-    socket,
-    tupleToHostAddress,
- )
 import Network.Socket.ByteString (recvFrom, sendTo)
 import System.Random (randomIO)
 import System.Timeout (timeout)
 
+import Lifx.Lan.Internal
 import Lifx.Internal.Product
 import Lifx.Internal.ProductInfoMap
 
 {- Device -}
-
--- | A LIFX device, such as a bulb.
-newtype Device = Device {unwrap :: HostAddress}
-    deriving newtype (Eq, Ord)
-
-instance Show Device where
-    show (Device ha) = let (a, b, c, d) = hostAddressToTuple ha in intercalate "." $ map show [a, b, c, d]
 
 {- |
 >>> deviceFromAddress (192, 168, 0, 1)
@@ -235,17 +205,6 @@ data LightState = LightState
     , power :: Word16
     , label :: BS.ByteString
     }
-    deriving (Eq, Ord, Show, Generic)
-
-data LifxError
-    = DecodeFailure BS.ByteString ByteOffset String
-    | RecvTimeout
-    | BroadcastTimeout [HostAddress] -- contains the addresses which we have received valid responses from
-    | WrongPacketType Word16 Word16 -- expected, then actual
-    | WrongSender Device HostAddress -- expected, then actual
-    | UnexpectedSockAddrType SockAddr
-    | UnexpectedPort PortNumber
-    | ProductLookupError ProductLookupError
     deriving (Eq, Ord, Show, Generic)
 
 {- Message responses -}
@@ -383,29 +342,6 @@ msgResWitness f m = case m of
 -- | A simple implementation of 'MonadLifx'.
 type Lifx = LifxT IO
 
-unLifxT :: LifxT m a -> (StateT Word8 (ReaderT (Socket, Word32, Int) (ExceptT LifxError m)) a)
-unLifxT = (.unwrap)
-
-newtype LifxT m a = LifxT
-    { unwrap ::
-        StateT
-            Word8
-            ( ReaderT
-                (Socket, Word32, Int)
-                ( ExceptT
-                    LifxError
-                    m
-                )
-            )
-            a
-    }
-    deriving newtype
-        ( Functor
-        , Applicative
-        , Monad
-        , MonadIO
-        )
-
 {- | Note that this throws 'LifxError's as 'IOException's, and sets timeout to 5 seconds.
 Use 'runLifxT' for more control.
 -}
@@ -494,34 +430,6 @@ instance MonadLifx m => MonadLifx (ReaderT e m) where
     broadcastMessage = lift . broadcastMessage
     discoverDevices = lift . discoverDevices
     lifxThrow = lift . lifxThrow
-
--- | A monad for sending and receiving LIFX messages.
-class MonadIO m => MonadLifxIO m where
-    getSocket :: m Socket
-    getSource :: m Word32
-    getTimeout :: m Int
-    incrementCounter :: m ()
-    getCounter :: m Word8
-    lifxThrowIO :: LifxError -> m a
-    handleOldMessage ::
-        -- | expected counter value
-        Word8 ->
-        -- | actual counter value
-        Word8 ->
-        -- | packet type
-        Word16 ->
-        -- | payload
-        BL.ByteString ->
-        m ()
-    handleOldMessage _ _ _ _ = pure ()
-
-instance MonadIO m => MonadLifxIO (LifxT m) where
-    getSocket = LifxT $ asks fst3
-    getSource = LifxT $ asks snd3
-    getTimeout = LifxT $ asks thd3
-    incrementCounter = LifxT $ modify succ'
-    getCounter = LifxT $ gets id
-    lifxThrowIO = LifxT . throwError
 
 {- Low level -}
 
@@ -672,12 +580,6 @@ getProductInfo dev = do
     either (lifxThrow . liftProductLookupError @m) pure $ productLookup v.vendor v.product versionMinor versionMajor
 
 {- Util -}
-
--- | Safe, wraparound variant of 'succ'.
-succ' :: (Eq a, Bounded a, Enum a) => a -> a
-succ' e
-    | e == maxBound = minBound
-    | otherwise = succ e
 
 fromIntegralSafe :: forall a b. (Integral a, Integral b, Bounded b) => a -> Maybe b
 fromIntegralSafe x =
