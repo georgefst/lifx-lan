@@ -125,16 +125,6 @@ deviceAddress = (.unwrap)
 lifxPort :: PortNumber
 lifxPort = 56700
 
--- | A colour. See https://lan.developer.lifx.com/docs/representing-color-with-hsbk.
-data HSBK = HSBK
-    { hue :: Word16
-    , saturation :: Word16
-    , brightness :: Word16
-    , kelvin :: Word16
-    -- ^ takes values in the range 1500 to 9000
-    }
-    deriving (Eq, Ord, Show, Generic)
-
 -- | A message we can send to a 'Device'. 'r' is the type of the expected response.
 data Message r where
     -- | https://lan.developer.lifx.com/docs/querying-the-device-for-data#getservice---packet-2

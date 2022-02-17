@@ -4,7 +4,6 @@
 -- | Rather than interacting with any bulbs, simulate interactions by printing to a terminal.
 module Lifx.Lan.Mock.Terminal (Mock, runMock, MockError) where
 
-import Control.Applicative
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
@@ -12,17 +11,15 @@ import Data.Colour.RGBSpace
 import Data.Colour.SRGB
 import Data.Foldable
 import Data.Functor
-import Data.Ord
 import Data.Tuple.Extra
-import Data.Word
 
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as BS
-import Data.Colour.RGBSpace.HSV (hsv)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import System.Console.ANSI hiding (SetColor)
 
+import Lifx.Internal.Colour
 import Lifx.Lan
 
 newtype Mock a = Mock (StateT (Map Device LightState) (ReaderT [Device] (ExceptT MockError IO)) a)
@@ -92,35 +89,3 @@ instance MonadLifx Mock where
         err = error "message unimplemented" -- TODO
     broadcastMessage m = ask >>= traverse \d -> (d,) <$> sendMessage d m
     discoverDevices x = maybe id take x <$> ask
-
--- TODO duplicated from lifx-manager - put this somewhere useful
-hsbkToRgb :: HSBK -> RGB Float
-hsbkToRgb HSBK{..} =
-    interpolateColour
-        (fromIntegral saturation / maxWord16)
-        c
-        c'
-  where
-    interpolateColour :: Num a => a -> RGB a -> RGB a -> RGB a
-    interpolateColour r = liftA2 (\a b -> a * (r + b * (1 - r)))
-    maxWord16 :: Float
-    maxWord16 = fromIntegral $ maxBound @Word16
-    minKelvin :: Num a => a
-    minKelvin = 1500
-    maxKelvin :: Num a => a
-    maxKelvin = 9000
-    c =
-        hsv
-            (360 * fromIntegral hue / maxWord16)
-            (fromIntegral saturation / maxWord16)
-            (fromIntegral brightness / maxWord16)
-    c' =
-        let t =
-                (log (fromIntegral kelvin) - log minKelvin)
-                    / log (maxKelvin / minKelvin)
-         in clamp (0, 1)
-                <$> RGB
-                    { channelRed = 1
-                    , channelGreen = t / 2 + 0.5
-                    , channelBlue = t
-                    }

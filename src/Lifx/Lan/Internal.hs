@@ -22,6 +22,16 @@ newtype Device = Device {unwrap :: HostAddress}
 instance Show Device where
     show (Device ha) = let (a, b, c, d) = hostAddressToTuple ha in intercalate "." $ map show [a, b, c, d]
 
+-- | A colour. See https://lan.developer.lifx.com/docs/representing-color-with-hsbk.
+data HSBK = HSBK
+    { hue :: Word16
+    , saturation :: Word16
+    , brightness :: Word16
+    , kelvin :: Word16
+    -- ^ takes values in the range 1500 to 9000
+    }
+    deriving (Eq, Ord, Show, Generic)
+
 data LifxError
     = DecodeFailure BS.ByteString ByteOffset String
     | RecvTimeout

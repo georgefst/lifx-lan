@@ -19,6 +19,7 @@ library
         Lifx.Lan
         Lifx.Lan.Mock.Terminal
         Lifx.Lan.Internal
+        Lifx.Internal.Colour
         Lifx.Internal.Product
         Lifx.Internal.ProductInfo
         Lifx.Internal.ProductInfoMap
