@@ -290,11 +290,11 @@ class MessageResult a where
             if timeLeft < 0
                 then pure False
                 else
-                    receiveMessage timeLeft (messageSize @a) >>= \case
+                    lift (receiveMessage timeLeft (messageSize @a)) >>= \case
                         Just (bs, addr) -> do
-                            decodeMessage @a bs >>= \case
+                            lift (decodeMessage @a bs) >>= \case
                                 Just x -> do
-                                    hostAddr <- hostAddressFromSock addr
+                                    hostAddr <- lift $ hostAddressFromSock addr
                                     lift (filter' hostAddr x) >>= \case
                                         Just x' -> modify $ Map.insertWith (<>) hostAddr (pure x')
                                         Nothing -> pure ()
@@ -302,7 +302,7 @@ class MessageResult a where
                             maybe (pure False) gets maybeFinished
                         Nothing -> do
                             -- if we were waiting for a predicate to pass, then we've timed out
-                            when (isJust maybeFinished) $ lifxThrowIO . BroadcastTimeout =<< gets Map.keys
+                            when (isJust maybeFinished) $ lift . lifxThrowIO . BroadcastTimeout =<< gets Map.keys
                             pure True
 
 class Response a where
@@ -522,13 +522,6 @@ instance MonadIO m => MonadLifxIO (LifxT m) where
     incrementCounter = LifxT $ modify succ'
     getCounter = LifxT $ gets id
     lifxThrowIO = LifxT . throwError
-instance MonadLifxIO m => MonadLifxIO (StateT s m) where
-    getSocket = lift getSocket
-    getSource = lift getSource
-    getTimeout = lift getTimeout
-    incrementCounter = lift incrementCounter
-    getCounter = lift getCounter
-    lifxThrowIO = lift . lifxThrowIO
 
 {- Low level -}
 
