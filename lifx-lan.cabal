@@ -77,5 +77,6 @@ library
         StandaloneDeriving
         TupleSections
         TypeApplications
+        TypeFamilies
         TypeOperators
         ViewPatterns

@@ -429,6 +429,12 @@ runLifxT timeoutDuration (LifxT x) = do
     runExceptT $ runReaderT (evalStateT x 0) (sock, source, timeoutDuration)
 
 class Monad m => MonadLifx m where
+    -- | The type of errors associated with 'm'.
+    type MonadLifxError m
+
+    liftProductLookupError :: ProductLookupError -> MonadLifxError m
+    lifxThrow :: MonadLifxError m -> m a
+
     -- | Send a message and wait for a response.
     sendMessage :: Device -> Message r -> m r
 
@@ -440,9 +446,11 @@ class Monad m => MonadLifx m where
     -- otherwise just keep waiting until timeout.
     discoverDevices :: Maybe Int -> m [Device]
 
-    lifxThrow :: LifxError -> m a
-
 instance MonadIO m => MonadLifx (LifxT m) where
+    type MonadLifxError (LifxT m) = LifxError
+    lifxThrow = lifxThrowIO
+    liftProductLookupError = ProductLookupError
+
     sendMessage receiver = msgResWitness \msg -> do
         incrementCounter
         sendMessage' True receiver.unwrap msg
@@ -458,23 +466,30 @@ instance MonadIO m => MonadLifx (LifxT m) where
             checkPort port
             pure . guard $ service == ServiceUDP
         p = nDevices <&> \n -> (>= n) . length
-    lifxThrow = lifxThrowIO
 instance MonadLifx m => MonadLifx (MaybeT m) where
+    type MonadLifxError (MaybeT m) = MonadLifxError m
+    liftProductLookupError = liftProductLookupError @m
     sendMessage = lift .: sendMessage
     broadcastMessage = lift . broadcastMessage
     discoverDevices = lift . discoverDevices
     lifxThrow = lift . lifxThrow
 instance MonadLifx m => MonadLifx (ExceptT e m) where
+    type MonadLifxError (ExceptT e m) = MonadLifxError m
+    liftProductLookupError = liftProductLookupError @m
     sendMessage = lift .: sendMessage
     broadcastMessage = lift . broadcastMessage
     discoverDevices = lift . discoverDevices
     lifxThrow = lift . lifxThrow
 instance MonadLifx m => MonadLifx (StateT s m) where
+    type MonadLifxError (StateT s m) = MonadLifxError m
+    liftProductLookupError = liftProductLookupError @m
     sendMessage = lift .: sendMessage
     broadcastMessage = lift . broadcastMessage
     discoverDevices = lift . discoverDevices
     lifxThrow = lift . lifxThrow
 instance MonadLifx m => MonadLifx (ReaderT e m) where
+    type MonadLifxError (ReaderT e m) = MonadLifxError m
+    liftProductLookupError = liftProductLookupError @m
     sendMessage = lift .: sendMessage
     broadcastMessage = lift . broadcastMessage
     discoverDevices = lift . discoverDevices
@@ -657,11 +672,11 @@ putMessagePayload = \case
         putWord32le $ nominalDiffTimeToInt @Milli d
 
 -- | Ask a device for its vendor and product ID, and look up info on it from the official database.
-getProductInfo :: MonadLifx m => Device -> m Product
+getProductInfo :: forall m. MonadLifx m => Device -> m Product
 getProductInfo dev = do
     StateHostFirmware{..} <- sendMessage dev GetHostFirmware
     v <- sendMessage dev GetVersion
-    either (lifxThrow . ProductLookupError) pure $ productLookup v.vendor v.product versionMinor versionMajor
+    either (lifxThrow . liftProductLookupError @m) pure $ productLookup v.vendor v.product versionMinor versionMajor
 
 {- Util -}
 

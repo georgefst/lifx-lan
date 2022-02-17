@@ -1,7 +1,7 @@
 -- TODO remove when `OverloadedRecordUpdate` is fully implemented (hopefully 9.4), and remove type applications
 {-# OPTIONS_GHC -Wno-ambiguous-fields #-}
 
-module Lifx.Lan.Mock.Terminal (Mock, runMock) where
+module Lifx.Lan.Mock.Terminal (Mock, runMock, MockError) where
 
 import Control.Applicative
 import Control.Monad.Except
@@ -24,32 +24,45 @@ import System.Console.ANSI hiding (SetColor)
 
 import Lifx.Lan
 
-newtype Mock a = Mock (StateT (Map Device LightState) (ReaderT [Device] IO) a)
+newtype Mock a = Mock (StateT (Map Device LightState) (ReaderT [Device] (ExceptT MockError IO)) a)
     deriving newtype
         ( Functor
         , Applicative
         , Monad
         , MonadIO
+        , MonadError MockError
         , MonadReader [Device]
         , MonadState (Map Device LightState)
         )
 
-runMock :: [(Device, ByteString)] -> Mock a -> IO a
+runMock :: [(Device, ByteString)] -> Mock a -> IO (Either MockError a)
 runMock ds (Mock x) = do
     mw <- fmap snd <$> getTerminalSize
     for_ ds \(_, d) ->
         BS.putStr $
             d <> BS.replicate (maybe 1 (\w -> (w `div` length ds) - BS.length d) mw) ' '
     putStrLn ""
-    flip runReaderT (fst <$> ds)
+    runExceptT
+        . flip
+            runReaderT
+            (fst <$> ds)
         . flip
             evalStateT
             (Map.fromList $ ds <&> second (LightState (HSBK 0 0 0 0) 1))
         $ x
 
+data MockError
+    = MockNoSuchDevice Device
+    | MockProductLookupError ProductLookupError
+    deriving (Show)
+
 instance MonadLifx Mock where
+    type MonadLifxError Mock = MockError
+    lifxThrow = throwError
+    liftProductLookupError = MockProductLookupError
+
     sendMessage d m = do
-        s <- maybe (lifxThrow RecvTimeout) pure =<< gets (Map.lookup d)
+        s <- maybe (lifxThrow $ MockNoSuchDevice d) pure =<< gets (Map.lookup d)
         r <- case m of
             GetService -> err
             GetHostFirmware -> err
@@ -78,7 +91,6 @@ instance MonadLifx Mock where
         err = error "message unimplemented" -- TODO
     broadcastMessage m = ask >>= traverse \d -> (d,) <$> sendMessage d m
     discoverDevices x = maybe id take x <$> ask
-    lifxThrow = error . show -- TODO I'm sure we can do better
 
 -- TODO duplicated from lifx-manager - put this somewhere useful
 hsbkToRgb :: HSBK -> RGB Float
