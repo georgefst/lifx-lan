@@ -1,6 +1,7 @@
 -- TODO remove when `OverloadedRecordUpdate` is fully implemented (hopefully 9.4), and remove type applications
 {-# OPTIONS_GHC -Wno-ambiguous-fields #-}
 
+-- | Rather than interacting with any bulbs, simulate interactions by printing to a terminal.
 module Lifx.Lan.Mock.Terminal (Mock, runMock, MockError) where
 
 import Control.Applicative
