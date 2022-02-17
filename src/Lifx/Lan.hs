@@ -21,6 +21,7 @@ main = runLifx do
 module Lifx.Lan (
     Device,
     deviceAddress,
+    deviceFromAddress,
     Message (..),
     HSBK (..),
     Lifx,
@@ -44,8 +45,10 @@ module Lifx.Lan (
     Product (..),
     Features (..),
 
-    -- * Low-level
-    deviceFromAddress,
+    -- * Message encoding
+
+    -- | These are used internally by `LifxT`'s 'sendMessage' and 'broadcastMessage'.
+    -- They are exposed in order to support some advanced use cases.
     encodeMessage,
     Header (..),
 ) where
@@ -109,8 +112,7 @@ import Lifx.Internal.ProductInfoMap
 >>> deviceFromAddress (192, 168, 0, 1)
 192.168.0.1
 
-'Device's are really just 'HostAddress's, but you don't need to know that to use this library.
-Prefer to get devices from 'discoverDevices' where possible, rather than hardcoding addresses.
+If we know the IP address of a `Device`, we can create it directly, rather than calling `discoverDevices`.
 -}
 deviceFromAddress :: (Word8, Word8, Word8, Word8) -> Device
 deviceFromAddress = Device . tupleToHostAddress
@@ -431,9 +433,17 @@ instance MonadLifx m => MonadLifx (ReaderT e m) where
     discoverDevices = lift . discoverDevices
     lifxThrow = lift . lifxThrow
 
-{- Low level -}
-
-encodeMessage :: Bool -> Bool -> Word8 -> Word32 -> Message r -> BL.ByteString
+encodeMessage ::
+    -- | tagged
+    Bool ->
+    -- | ackRequired
+    Bool ->
+    -- | sequenceCounter
+    Word8 ->
+    -- | source
+    Word32 ->
+    Message r ->
+    BL.ByteString
 encodeMessage tagged ackRequired sequenceCounter source msg =
     runPut $ Binary.put (messageHeader tagged ackRequired sequenceCounter source msg) >> putMessagePayload msg
 
