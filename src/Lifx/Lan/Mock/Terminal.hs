@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -Wno-ambiguous-fields #-}
 
 -- | Rather than interacting with any bulbs, simulate interactions by printing to a terminal.
-module Lifx.Lan.Mock.Terminal (Mock, runMock, MockState (MockState), MockError) where
+module Lifx.Lan.Mock.Terminal (Mock, runMock, MockState (MockState), MockError, runMockFull) where
 
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -17,6 +17,7 @@ import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import System.Console.ANSI hiding (SetColor)
 
+import Data.Bifunctor
 import Lifx.Internal.Colour
 import Lifx.Lan
 
@@ -33,9 +34,9 @@ newtype Mock a = Mock (StateT (Map Device MockState) (ReaderT [Device] (ExceptT 
 
 data MockState = MockState
     { light :: LightState
-    , service :: StateService
-    , hostFirmware :: StateHostFirmware
-    , version :: StateVersion
+    , service :: Maybe StateService
+    , hostFirmware :: Maybe StateHostFirmware
+    , version :: Maybe StateVersion
     }
 
 -- TODO this seems like a GHC bug
@@ -43,8 +44,11 @@ dotLabel :: LightState -> ByteString
 -- dotLabel = (.label)
 dotLabel = \LightState{..} -> label
 
-runMock :: [(Device, MockState)] -> Mock a -> IO (Either MockError a)
-runMock ds (Mock x) = do
+runMock :: [(Device, ByteString)] -> Mock a -> IO (Either MockError a)
+runMock = runMockFull . fmap (second \bs -> MockState (LightState (HSBK 0 0 0 0) 1 bs) Nothing Nothing Nothing)
+
+runMockFull :: [(Device, MockState)] -> Mock a -> IO (Either MockError a)
+runMockFull ds (Mock x) = do
     mw <- fmap snd <$> getTerminalSize
     for_ ds \(_, s) ->
         let bs = dotLabel s.light
@@ -63,6 +67,7 @@ runMock ds (Mock x) = do
 data MockError
     = MockNoSuchDevice Device
     | MockProductLookupError ProductLookupError
+    | MockDataNotProvided
     deriving (Show)
 
 instance MonadLifx Mock where
@@ -73,11 +78,11 @@ instance MonadLifx Mock where
     sendMessage d m = do
         s <- maybe (lifxThrow $ MockNoSuchDevice d) pure =<< gets (Map.lookup d)
         r <- case m of
-            GetService -> pure s.service
-            GetHostFirmware -> pure s.hostFirmware
+            GetService -> whenProvided s.service
+            GetHostFirmware -> whenProvided s.hostFirmware
             GetPower -> pure $ StatePower s.light.power
             SetPower (convertPower -> power) -> modify $ Map.insert d s{light = s.light{power}}
-            GetVersion -> pure s.version
+            GetVersion -> whenProvided s.version
             GetColor -> pure s.light
             SetColor hsbk _t -> modify $ Map.insert d s{light = s.light{hsbk}}
             SetLightPower (convertPower -> power) _t -> modify $ Map.insert d s{light = s.light{power}}
@@ -93,6 +98,7 @@ instance MonadLifx Mock where
         liftIO $ putStrLn ""
         pure r
       where
+        whenProvided = maybe (throwError MockDataNotProvided) pure
         convertPower = fromIntegral . fromEnum
         mkSGR s =
             if s.light.power /= 0
