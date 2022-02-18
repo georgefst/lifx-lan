@@ -15,7 +15,6 @@ import Data.Foldable
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import System.Console.ANSI hiding (SetColor)
 
@@ -49,13 +48,7 @@ runMock :: [(Device, Text)] -> Mock a -> IO (Either MockError a)
 runMock = runMockFull . fmap (second \t -> MockState (LightState (HSBK 0 0 0 0) 1 t) Nothing Nothing Nothing)
 
 runMockFull :: [(Device, MockState)] -> Mock a -> IO (Either MockError a)
-runMockFull ds (Mock x) = do
-    mw <- fmap snd <$> getTerminalSize
-    for_ ds \(_, s) ->
-        let t = dotLabel s.light
-         in T.putStr $
-                t <> T.replicate (maybe 1 (\w -> (w `div` length ds) - T.length t) mw) " "
-    putStrLn ""
+runMockFull ds (Mock x) =
     runExceptT
         . flip
             runReaderT
@@ -92,9 +85,7 @@ instance MonadLifx Mock where
             s' <- lookupDevice d'
             liftIO do
                 setSGR $ mkSGR s'.light
-                putStr
-                    . maybe ("error: couldn't get terminal size") (flip replicate ' ' . (`div` length ds) . snd)
-                    =<< getTerminalSize
+                T.putStr $ dotLabel s'.light
                 setSGR []
         liftIO $ putStrLn ""
         pure r
