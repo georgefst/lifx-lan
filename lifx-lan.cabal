@@ -55,7 +55,6 @@ library
         DerivingStrategies
         DerivingVia
         DuplicateRecordFields
-        DuplicateRecordFields
         EmptyCase
         FlexibleContexts
         FlexibleInstances
