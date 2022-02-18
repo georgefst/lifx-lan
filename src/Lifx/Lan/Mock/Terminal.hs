@@ -1,8 +1,8 @@
--- TODO remove when `OverloadedRecordUpdate` is fully implemented (hopefully 9.4), and remove type applications
+-- TODO remove when `OverloadedRecordUpdate` is fully implemented (and simplify some nested updates) - hopefully 9.4
 {-# OPTIONS_GHC -Wno-ambiguous-fields #-}
 
 -- | Rather than interacting with any bulbs, simulate interactions by printing to a terminal.
-module Lifx.Lan.Mock.Terminal (Mock, runMock, MockError) where
+module Lifx.Lan.Mock.Terminal (Mock, runMock, MockState (MockState), MockError) where
 
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -10,8 +10,6 @@ import Control.Monad.State
 import Data.Colour.RGBSpace
 import Data.Colour.SRGB
 import Data.Foldable
-import Data.Functor
-import Data.Tuple.Extra
 
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as BS
@@ -22,7 +20,7 @@ import System.Console.ANSI hiding (SetColor)
 import Lifx.Internal.Colour
 import Lifx.Lan
 
-newtype Mock a = Mock (StateT (Map Device LightState) (ReaderT [Device] (ExceptT MockError IO)) a)
+newtype Mock a = Mock (StateT (Map Device MockState) (ReaderT [Device] (ExceptT MockError IO)) a)
     deriving newtype
         ( Functor
         , Applicative
@@ -30,15 +28,28 @@ newtype Mock a = Mock (StateT (Map Device LightState) (ReaderT [Device] (ExceptT
         , MonadIO
         , MonadError MockError
         , MonadReader [Device]
-        , MonadState (Map Device LightState)
+        , MonadState (Map Device MockState)
         )
 
-runMock :: [(Device, ByteString)] -> Mock a -> IO (Either MockError a)
+data MockState = MockState
+    { light :: LightState
+    , service :: StateService
+    , hostFirmware :: StateHostFirmware
+    , version :: StateVersion
+    }
+
+-- TODO this seems like a GHC bug
+dotLabel :: LightState -> ByteString
+-- dotLabel = (.label)
+dotLabel = \LightState{..} -> label
+
+runMock :: [(Device, MockState)] -> Mock a -> IO (Either MockError a)
 runMock ds (Mock x) = do
     mw <- fmap snd <$> getTerminalSize
-    for_ ds \(_, d) ->
-        BS.putStr $
-            d <> BS.replicate (maybe 1 (\w -> (w `div` length ds) - BS.length d) mw) ' '
+    for_ ds \(_, s) ->
+        let bs = dotLabel s.light
+         in BS.putStr $
+                bs <> BS.replicate (maybe 1 (\w -> (w `div` length ds) - BS.length bs) mw) ' '
     putStrLn ""
     runExceptT
         . flip
@@ -46,7 +57,7 @@ runMock ds (Mock x) = do
             (fst <$> ds)
         . flip
             evalStateT
-            (Map.fromList $ ds <&> second (LightState (HSBK 0 0 0 0) 1))
+            (Map.fromList ds)
         $ x
 
 data MockError
@@ -62,14 +73,14 @@ instance MonadLifx Mock where
     sendMessage d m = do
         s <- maybe (lifxThrow $ MockNoSuchDevice d) pure =<< gets (Map.lookup d)
         r <- case m of
-            GetService -> err
-            GetHostFirmware -> err
-            GetPower -> pure $ StatePower s.power
-            SetPower power -> modify $ Map.insert @_ @LightState d s{power = fromIntegral $ fromEnum power}
-            GetVersion -> err
-            GetColor -> pure s
-            SetColor hsbk _t -> modify $ Map.insert d s{hsbk}
-            SetLightPower _ _ -> err
+            GetService -> pure s.service
+            GetHostFirmware -> pure s.hostFirmware
+            GetPower -> pure $ StatePower s.light.power
+            SetPower (convertPower -> power) -> modify $ Map.insert d s{light = s.light{power}}
+            GetVersion -> pure s.version
+            GetColor -> pure s.light
+            SetColor hsbk _t -> modify $ Map.insert d s{light = s.light{hsbk}}
+            SetLightPower (convertPower -> power) _t -> modify $ Map.insert d s{light = s.light{power}}
         ds <- ask
         for_ ds \d' -> do
             sgr <- gets $ maybe [] mkSGR . Map.lookup d'
@@ -82,10 +93,10 @@ instance MonadLifx Mock where
         liftIO $ putStrLn ""
         pure r
       where
-        mkSGR LightState{..} =
-            if power /= 0
-                then [SetRGBColor Background . uncurryRGB sRGB $ hsbkToRgb hsbk]
+        convertPower = fromIntegral . fromEnum
+        mkSGR s =
+            if s.light.power /= 0
+                then [SetRGBColor Background . uncurryRGB sRGB $ hsbkToRgb s.light.hsbk]
                 else []
-        err = error "message unimplemented" -- TODO
     broadcastMessage m = ask >>= traverse \d -> (d,) <$> sendMessage d m
     discoverDevices x = maybe id take x <$> ask
