@@ -91,7 +91,7 @@ instance MonadLifx Mock where
         for_ ds \d' -> do
             s' <- lookupDevice d'
             liftIO do
-                setSGR $ mkSGR s'
+                setSGR $ mkSGR s'.light
                 putStr
                     . maybe ("error: couldn't get terminal size") (flip replicate ' ' . (`div` length ds) . snd)
                     =<< getTerminalSize
@@ -103,8 +103,8 @@ instance MonadLifx Mock where
         whenProvided = maybe (throwError MockDataNotProvided) pure
         convertPower = fromIntegral . fromEnum
         mkSGR s =
-            if s.light.power /= 0
-                then [SetRGBColor Background . uncurryRGB sRGB $ hsbkToRgb s.light.hsbk]
+            if s.power /= 0
+                then [SetRGBColor Background . uncurryRGB sRGB $ hsbkToRgb s.hsbk]
                 else []
     broadcastMessage m = ask >>= traverse \d -> (d,) <$> sendMessage d m
     discoverDevices x = maybe id take x <$> ask
