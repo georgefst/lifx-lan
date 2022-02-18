@@ -5,6 +5,7 @@
     - If anyone is stuck on an older version of GHC and needs recent features of `lifx-lan` then please let me know. It would be reasonably easy to create a branch for it.
 - No field selector functions are provided for any types. Using `OverloadedRecordDot` in client code is recommended. We still export `unLifxT` as a normal function, for backward compatibility.
 - Rename `productId` field of `Product` to `id`.
+- Use `Text` rather than `ByteString` for `label` field of `LightState`.
 
 ## 0.6.2 -- 2022-02-02
 - Update to latest products list.

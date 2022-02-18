@@ -97,12 +97,13 @@ import Data.ByteString.Lazy qualified as BL
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
+import Data.Text (Text)
+import Data.Text.Encoding (decodeUtf8)
 import GHC.Generics (Generic)
 import Network.Socket.ByteString (recvFrom, sendTo)
 import System.Random (randomIO)
 import System.Timeout (timeout)
 
-import Lifx.Lan.Internal
 import Lifx.Internal.Product
 import Lifx.Internal.ProductInfoMap
 import Lifx.Lan.Internal
@@ -196,7 +197,7 @@ data StateVersion = StateVersion
 data LightState = LightState
     { hsbk :: HSBK
     , power :: Word16
-    , label :: BS.ByteString
+    , label :: Text
     }
     deriving (Eq, Ord, Show, Generic)
 
@@ -314,7 +315,7 @@ instance Response LightState where
         hsbk <- HSBK <$> getWord16le <*> getWord16le <*> getWord16le <*> getWord16le
         skip 2
         power <- getWord16le
-        label <- BS.takeWhile (/= 0) <$> getByteString 32
+        label <- decodeUtf8 . BS.takeWhile (/= 0) <$> getByteString 32
         skip 8
         pure LightState{..}
 instance MessageResult LightState

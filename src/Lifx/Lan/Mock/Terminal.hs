@@ -7,17 +7,18 @@ module Lifx.Lan.Mock.Terminal (Mock, runMock, MockState (MockState), MockError, 
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
+import Data.Bifunctor
 import Data.Colour.RGBSpace
 import Data.Colour.SRGB
 import Data.Foldable
 
-import Data.ByteString (ByteString)
-import Data.ByteString.Char8 qualified as BS
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
+import Data.Text (Text)
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import System.Console.ANSI hiding (SetColor)
 
-import Data.Bifunctor
 import Lifx.Internal.Colour
 import Lifx.Lan
 
@@ -40,20 +41,20 @@ data MockState = MockState
     }
 
 -- TODO this seems like a GHC bug
-dotLabel :: LightState -> ByteString
+dotLabel :: LightState -> Text
 -- dotLabel = (.label)
 dotLabel = \LightState{..} -> label
 
-runMock :: [(Device, ByteString)] -> Mock a -> IO (Either MockError a)
-runMock = runMockFull . fmap (second \bs -> MockState (LightState (HSBK 0 0 0 0) 1 bs) Nothing Nothing Nothing)
+runMock :: [(Device, Text)] -> Mock a -> IO (Either MockError a)
+runMock = runMockFull . fmap (second \t -> MockState (LightState (HSBK 0 0 0 0) 1 t) Nothing Nothing Nothing)
 
 runMockFull :: [(Device, MockState)] -> Mock a -> IO (Either MockError a)
 runMockFull ds (Mock x) = do
     mw <- fmap snd <$> getTerminalSize
     for_ ds \(_, s) ->
-        let bs = dotLabel s.light
-         in BS.putStr $
-                bs <> BS.replicate (maybe 1 (\w -> (w `div` length ds) - BS.length bs) mw) ' '
+        let t = dotLabel s.light
+         in T.putStr $
+                t <> T.replicate (maybe 1 (\w -> (w `div` length ds) - T.length t) mw) " "
     putStrLn ""
     runExceptT
         . flip
