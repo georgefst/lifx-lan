@@ -105,6 +105,7 @@ import System.Timeout (timeout)
 import Lifx.Lan.Internal
 import Lifx.Internal.Product
 import Lifx.Internal.ProductInfoMap
+import Lifx.Lan.Internal
 
 {- Device -}
 
