@@ -76,7 +76,7 @@ instance MonadLifx Mock where
     liftProductLookupError = MockProductLookupError
 
     sendMessage d m = do
-        s <- maybe (lifxThrow $ MockNoSuchDevice d) pure =<< gets (Map.lookup d)
+        s <- lookupDevice d
         r <- case m of
             GetService -> whenProvided s.service
             GetHostFirmware -> whenProvided s.hostFirmware
@@ -88,9 +88,9 @@ instance MonadLifx Mock where
             SetLightPower (convertPower -> power) _t -> modify $ Map.insert d s{light = s.light{power}}
         ds <- ask
         for_ ds \d' -> do
-            sgr <- gets $ maybe [] mkSGR . Map.lookup d'
+            s' <- lookupDevice d'
             liftIO do
-                setSGR sgr
+                setSGR $ mkSGR s'
                 putStr
                     . maybe ("error: couldn't get terminal size") (flip replicate ' ' . (`div` length ds) . snd)
                     =<< getTerminalSize
@@ -98,6 +98,7 @@ instance MonadLifx Mock where
         liftIO $ putStrLn ""
         pure r
       where
+        lookupDevice = maybe (lifxThrow $ MockNoSuchDevice d) pure <=< gets . Map.lookup
         whenProvided = maybe (throwError MockDataNotProvided) pure
         convertPower = fromIntegral . fromEnum
         mkSGR s =
