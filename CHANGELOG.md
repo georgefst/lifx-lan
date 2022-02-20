@@ -4,6 +4,9 @@
 - Drop support for GHC < 9.2.
     - If anyone is stuck on an older version of GHC and needs recent features of `lifx-lan` then please let me know. It would be reasonably easy to create a branch for it.
 - No field selector functions are provided for any types. Using `OverloadedRecordDot` in client code is recommended. We still export `unLifxT` as a normal function, for backward compatibility.
+- Much of the implementation detail of `LifxT` has been moved to `Lifx.Lan.Internal`.
+- Add `Lifx.Lan.Mock.Terminal` module for testing programs without a physical LIFX device.
+- Use `Text` rather than `ByteString` for `label` field of `LightState`.
 - Rename `productId` field of `Product` to `id`.
 
 ## 0.6.2 -- 2022-02-02
