@@ -1,6 +1,6 @@
 # Revision history for lifx-lan
 
-## Unreleased
+## 0.7 -- 2022-02-20
 - Drop support for GHC < 9.2.
     - If anyone is stuck on an older version of GHC and needs recent features of `lifx-lan` then please let me know. It would be reasonably easy to create a branch for it.
 - Don't provide field selector functions for any types. Using `OverloadedRecordDot` in client code is recommended. We still export `unLifxT` as a normal function, for backward compatibility.
