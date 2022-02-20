@@ -1700,7 +1700,7 @@ productInfo =
                 }
             , ProductInfo
                 { pid = 117
-                , name = "LIFX Z"
+                , name = "LIFX Z US"
                 , features = PartialFeatures
                     { hev = Nothing
                     , color = Just True
@@ -1720,7 +1720,7 @@ productInfo =
                 }
             , ProductInfo
                 { pid = 118
-                , name = "LIFX Z"
+                , name = "LIFX Z Intl"
                 , features = PartialFeatures
                     { hev = Nothing
                     , color = Just True
@@ -1740,7 +1740,7 @@ productInfo =
                 }
             , ProductInfo
                 { pid = 119
-                , name = "LIFX Beam"
+                , name = "LIFX Beam US"
                 , features = PartialFeatures
                     { hev = Nothing
                     , color = Just True
@@ -1760,7 +1760,7 @@ productInfo =
                 }
             , ProductInfo
                 { pid = 120
-                , name = "LIFX Beam"
+                , name = "LIFX Beam Intl"
                 , features = PartialFeatures
                     { hev = Nothing
                     , color = Just True

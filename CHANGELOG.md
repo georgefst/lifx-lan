@@ -8,6 +8,7 @@
 - Add `Lifx.Lan.Mock.Terminal` module for testing programs without a physical LIFX device.
 - Use `Text` rather than `ByteString` for `label` field of `LightState`.
 - Rename `productId` field of `Product` to `id`.
+- Update to latest products list.
 
 ## 0.6.2 -- 2022-02-02
 - Update to latest products list.
