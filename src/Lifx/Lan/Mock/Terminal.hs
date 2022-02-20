@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -Wno-ambiguous-fields #-}
 
 -- | Rather than interacting with any bulbs, simulate interactions by printing to a terminal.
-module Lifx.Lan.Mock.Terminal (Mock, runMock, MockState (MockState), MockError, runMockFull) where
+module Lifx.Lan.Mock.Terminal (Mock, MockError, runMock, runMockFull, MockState (MockState)) where
 
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -44,9 +44,15 @@ dotLabel :: LightState -> Text
 -- dotLabel = (.label)
 dotLabel = \LightState{..} -> label
 
+{- | Run a LIFX action by mocking effects in a terminal.
+
+Note that sending some messages (e.g. 'GetVersion') will throw exceptions, since the necessary state isn't specified.
+See `runMockFull` for more control.
+-}
 runMock :: [(Device, Text)] -> Mock a -> IO (Either MockError a)
 runMock = runMockFull . fmap (second \t -> MockState (LightState (HSBK 0 0 0 0) 1 t) Nothing Nothing Nothing)
 
+-- | More general version of `runMock`, which allows specifying extra information about devices.
 runMockFull :: [(Device, MockState)] -> Mock a -> IO (Either MockError a)
 runMockFull ds (Mock x) =
     runExceptT
