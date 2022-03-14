@@ -31,6 +31,7 @@ module Lifx.Lan (
     LifxError (..),
     ProductLookupError (..),
     MonadLifx (..),
+    sendMessageAndWait,
 
     -- * Responses
     StateService (..),
@@ -53,6 +54,7 @@ module Lifx.Lan (
     Header (..),
 ) where
 
+import Control.Concurrent
 import Control.Monad
 import Control.Monad.Except
 import Control.Monad.Extra
@@ -65,6 +67,7 @@ import Data.Fixed
 import Data.Foldable
 import Data.Functor
 import Data.Maybe
+import Data.Proxy
 import Data.Time
 import Data.Word
 import Network.Socket
@@ -580,6 +583,22 @@ getProductInfo dev = do
     StateHostFirmware{..} <- sendMessage dev GetHostFirmware
     v <- sendMessage dev GetVersion
     either (lifxThrow . liftProductLookupError @m) pure $ productLookup v.vendor v.product versionMinor versionMajor
+
+{- Higher-level helpers -}
+
+{- | Like `sendMessage`, but for messages whose effect is not instantaneous (e.g. `SetColor`),
+block (using `threadDelay`) until completion.
+-}
+sendMessageAndWait :: (MonadLifx m, MonadIO m) => Device -> Message () -> m ()
+sendMessageAndWait d m = do
+    sendMessage d m
+    maybe (pure ()) (liftIO . threadDelay . timeMicros) mt
+  where
+    mt = case m of
+        SetPower{} -> Nothing
+        SetColor _ t -> Just t
+        SetLightPower _ t -> Just t
+    timeMicros t = round $ t * fromInteger (resolution $ Proxy @E6)
 
 {- Util -}
 

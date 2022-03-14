@@ -6,6 +6,7 @@
 - Don't provide field selector functions for any types. Using `OverloadedRecordDot` in client code is recommended. We still export `unLifxT` as a normal function, for backward compatibility.
 - Move much of the implementation detail of `LifxT` has been moved to `Lifx.Lan.Internal`.
 - Add `Lifx.Lan.Mock.Terminal` module for testing programs without a physical LIFX device.
+- Add `sendMessageAndWait` function.
 - Use `Text` rather than `ByteString` for `label` field of `LightState`.
 - Rename `productId` field of `Product` to `id`.
 - Update to latest products list.
