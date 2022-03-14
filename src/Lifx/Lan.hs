@@ -67,7 +67,6 @@ import Data.Fixed
 import Data.Foldable
 import Data.Functor
 import Data.Maybe
-import Data.Proxy
 import Data.Time
 import Data.Word
 import Network.Socket
@@ -598,7 +597,7 @@ sendMessageAndWait d m = do
         SetPower{} -> Nothing
         SetColor _ t -> Just t
         SetLightPower _ t -> Just t
-    timeMicros t = round $ t * fromInteger (resolution $ Proxy @E6)
+    timeMicros t = round $ t * 1_000_000
 
 {- Util -}
 
