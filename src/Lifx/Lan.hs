@@ -100,7 +100,8 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import Data.Text.Encoding (decodeUtf8)
+import Data.Text.Encoding (decodeUtf8')
+import Data.Text.Encoding.Error (UnicodeException (DecodeError))
 import GHC.Generics (Generic)
 import Network.Socket.ByteString (recvFrom, sendTo)
 import System.Random (randomIO)
@@ -317,9 +318,13 @@ instance Response LightState where
         hsbk <- HSBK <$> getWord16le <*> getWord16le <*> getWord16le <*> getWord16le
         skip 2
         power <- getWord16le
-        label <- decodeUtf8 . BS.takeWhile (/= 0) <$> getByteString 32
+        label <- either (fail . showDecodeError) pure . decodeUtf8' . BS.takeWhile (/= 0) =<< getByteString 32
         skip 8
         pure LightState{..}
+      where
+        showDecodeError = \case
+            DecodeError s _ -> s
+            _ -> "impossible"
 instance MessageResult LightState
 
 msgResWitness :: (MessageResult r => Message r -> a) -> (Message r -> a)
