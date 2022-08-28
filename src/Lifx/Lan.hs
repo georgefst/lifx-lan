@@ -349,7 +349,7 @@ Use 'runLifxT' for more control.
 runLifx :: Lifx a -> IO a
 runLifx m =
     runLifxT 5_000_000 m >>= \case
-        Left e -> ioError $ mkIOError userErrorType (show e) Nothing Nothing
+        Left e -> ioError $ mkIOError userErrorType ("LIFX LAN: " <> show e) Nothing Nothing
         Right x -> pure x
 
 runLifxT ::
