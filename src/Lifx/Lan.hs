@@ -393,9 +393,10 @@ instance MonadIO m => MonadLifx (LifxT m) where
         sendMessage' True receiver.unwrap msg
         getSendResult receiver
 
-    broadcastMessage = msgResWitness \msg ->
-        concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList
-            <$> broadcastAndGetResult (const $ pure . pure) Nothing msg
+    broadcastMessage =
+        msgResWitness $
+            fmap (concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList)
+                . broadcastAndGetResult (const $ pure . pure) Nothing
 
     discoverDevices nDevices = Map.keys <$> broadcastAndGetResult f p GetService
       where
