@@ -240,27 +240,30 @@ class MessageResult a where
         timeoutDuration <- getTimeout
         broadcast msg
         t0 <- liftIO getCurrentTime
-        fmap (Map.mapKeysMonotonic Device) . flip execStateT Map.empty . untilM $ traverse gets maybeFinished >>= \case
-          Just True -> pure True
-          _ -> do
-            t <- liftIO getCurrentTime
-            let timeLeft = timeoutDuration - nominalDiffTimeToInt @Micro (diffUTCTime t t0)
-            if timeLeft < 0
-                then pure False
-                else
-                    lift (receiveMessage timeLeft (messageSize @a)) >>= \case
-                        Just (bs, addr) -> do
-                            lift (decodeMessage @a bs) >>= \case
-                                Just x -> do
-                                    hostAddr <- lift $ hostAddressFromSock addr
-                                    lift (filter' hostAddr x) >>= \case
-                                        Just x' -> modify (Map.insertWith (<>) hostAddr (pure x')) >> pure False
+        fmap (Map.mapKeysMonotonic Device) . flip execStateT Map.empty . untilM $
+            traverse gets maybeFinished >>= \case
+                Just True -> pure True
+                _ -> do
+                    t <- liftIO getCurrentTime
+                    let timeLeft = timeoutDuration - nominalDiffTimeToInt @Micro (diffUTCTime t t0)
+                    if timeLeft < 0
+                        then pure False
+                        else
+                            lift (receiveMessage timeLeft (messageSize @a)) >>= \case
+                                Just (bs, addr) -> do
+                                    lift (decodeMessage @a bs) >>= \case
+                                        Just x -> do
+                                            hostAddr <- lift $ hostAddressFromSock addr
+                                            lift (filter' hostAddr x) >>= \case
+                                                Just x' -> modify (Map.insertWith (<>) hostAddr (pure x')) >> pure False
+                                                Nothing -> pure False
                                         Nothing -> pure False
-                                Nothing -> pure False
-                        Nothing -> do
-                            -- if we were waiting for a predicate to pass, then we've timed out
-                            when (isJust maybeFinished) $ lift . lifxThrowIO . BroadcastTimeout =<< gets Map.keys
-                            pure True
+                                Nothing -> do
+                                    -- if we were waiting for a predicate to pass, then we've timed out
+                                    when (isJust maybeFinished) $
+                                        lift . lifxThrowIO . BroadcastTimeout
+                                            =<< gets Map.keys
+                                    pure True
 
 class Response a where
     expectedPacketType :: Word16
