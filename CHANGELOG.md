@@ -1,5 +1,9 @@
 # Revision history for lifx-lan
 
+## 0.7.1 -- 21-10-2022
+- Handle invalid UTF-8 in light label.
+- Ensure discovery exits successfully when zero devices wanted
+
 ## 0.7 -- 2022-02-20
 - Drop support for GHC < 9.2.
     - If anyone is stuck on an older version of GHC and needs recent features of `lifx-lan` then please let me know. It would be reasonably easy to create a branch for it.
