@@ -12,7 +12,7 @@ import Lifx.Lan.Internal
 {- |
 Note that when 'kelvin' has an effect (i.e. when saturation is any less than maximum), output is somewhat arbitrary.
 
-LIFX's team have never shared an exact forumla, and this implementation is inspired by various conflicting sources.
+LIFX's team have never shared an exact formula, and this implementation is inspired by various conflicting sources.
 -}
 hsbkToRgb :: HSBK -> RGB Float
 hsbkToRgb HSBK{..} =
