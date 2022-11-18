@@ -6,6 +6,7 @@ import Data.Ord
 import Data.Word
 
 import Data.Colour.RGBSpace.HSV (hsv)
+import Data.Colour.RGBSpace.HSV qualified as HSV
 
 import Lifx.Lan.Internal
 
@@ -36,6 +37,16 @@ hsbkToRgb HSBK{..} =
                     , channelGreen = t / 2 + 0.5
                     , channelBlue = t
                     }
+
+-- | Kelvin in output is always 0.
+rgbToHsbk :: RGB Float -> HSBK
+rgbToHsbk c =
+    HSBK
+        { hue = floor $ HSV.hue c * fromIntegral (maxBound @Word16 `div` 360)
+        , saturation = floor $ HSV.saturation c * fromIntegral (maxBound @Word16)
+        , brightness = floor $ HSV.value c * fromIntegral (maxBound @Word16)
+        , kelvin = 0
+        }
 
 interpolateColour :: Num a => a -> RGB a -> RGB a -> RGB a
 interpolateColour r = liftA2 (\a b -> a * (r + b * (1 - r)))
