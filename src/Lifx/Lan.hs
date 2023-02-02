@@ -61,6 +61,7 @@ import Control.Monad.Extra
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Trans.Maybe
+import Control.Monad.Writer hiding (Product)
 import Data.Composition
 import Data.Either.Extra
 import Data.Fixed
@@ -424,6 +425,13 @@ instance MonadLifx m => MonadLifx (ExceptT e m) where
     lifxThrow = lift . lifxThrow
 instance MonadLifx m => MonadLifx (StateT s m) where
     type MonadLifxError (StateT s m) = MonadLifxError m
+    liftProductLookupError = liftProductLookupError @m
+    sendMessage = lift .: sendMessage
+    broadcastMessage = lift . broadcastMessage
+    discoverDevices = lift . discoverDevices
+    lifxThrow = lift . lifxThrow
+instance (MonadLifx m, Monoid t) => MonadLifx (WriterT t m) where
+    type MonadLifxError (WriterT t m) = MonadLifxError m
     liftProductLookupError = liftProductLookupError @m
     sendMessage = lift .: sendMessage
     broadcastMessage = lift . broadcastMessage
