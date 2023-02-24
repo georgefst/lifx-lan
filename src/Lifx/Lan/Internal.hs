@@ -1,3 +1,5 @@
+{-# LANGUAGE UndecidableInstances #-}
+
 module Lifx.Lan.Internal where
 
 import Control.Monad.Except
@@ -90,6 +92,22 @@ newtype LifxT m a = LifxT
         , Monad
         , MonadIO
         )
+
+instance MonadTrans LifxT where
+    lift = LifxT . lift . lift . lift
+instance MonadReader s m => MonadReader s (LifxT m) where
+    ask = lift ask
+    local f m = LifxT $ StateT \s -> ReaderT \e ->
+        ExceptT $ local f $ unLifx e s m
+instance MonadState s m => MonadState s (LifxT m) where
+    state = lift . state
+instance MonadError e m => MonadError e (LifxT m) where
+    throwError = lift . throwError @e @m
+    catchError m h = LifxT $ StateT \s -> ReaderT \e ->
+        ExceptT $ catchError @e @m (unLifx e s m) (unLifx e s . h)
+
+unLifx :: (Socket, Word32, Int) -> Word8 -> LifxT m a -> m (Either LifxError (a, Word8))
+unLifx e s = runExceptT . flip runReaderT e . flip runStateT s . (.unwrap)
 
 {- Util -}
 
