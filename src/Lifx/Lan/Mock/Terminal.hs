@@ -41,8 +41,7 @@ data MockState = MockState
 
 -- TODO this seems like a GHC bug
 dotLabel :: LightState -> Text
--- dotLabel = (.label)
-dotLabel = \LightState{..} -> label
+dotLabel LightState{..} = label
 
 {- | Run a LIFX action by mocking effects in a terminal.
 
@@ -99,9 +98,6 @@ instance MonadLifx Mock where
         lookupDevice = maybe (lifxThrow $ MockNoSuchDevice d) pure <=< gets . Map.lookup
         whenProvided = maybe (throwError MockDataNotProvided) pure
         convertPower = fromIntegral . fromEnum
-        mkSGR s =
-            if s.power /= 0
-                then [SetRGBColor Background . uncurryRGB sRGB $ hsbkToRgb s.hsbk]
-                else []
+        mkSGR s = [SetRGBColor Background . uncurryRGB sRGB $ hsbkToRgb s.hsbk | s.power /= 0]
     broadcastMessage m = ask >>= traverse \d -> (d,) <$> sendMessage d m
     discoverDevices x = maybe id take x <$> ask
