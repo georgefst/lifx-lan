@@ -8,6 +8,8 @@
 import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (for_)
 
+import Lifx.Lan
+
 -- | Find all devices on the network, print their addresses, and set their brightness to 50%.
 main :: IO ()
 main = runLifx do
