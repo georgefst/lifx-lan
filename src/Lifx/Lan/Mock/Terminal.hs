@@ -39,8 +39,8 @@ data MockState = MockState
     , version :: Maybe StateVersion
     }
 
--- TODO this seems like a GHC bug
 dotLabel :: LightState -> Text
+-- dotLabel = (.label) -- TODO this is a GHC bug: https://gitlab.haskell.org/ghc/ghc/-/issues/21226
 dotLabel LightState{..} = label
 
 {- | Run a LIFX action by mocking effects in a terminal.
