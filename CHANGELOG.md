@@ -2,7 +2,7 @@
 
 ## 0.7.1 -- 21-10-2022
 - Handle invalid UTF-8 in light label.
-- Ensure discovery exits successfully when zero devices wanted
+- Ensure discovery exits successfully when zero devices are wanted.
 
 ## 0.7 -- 2022-02-20
 - Drop support for GHC < 9.2.
