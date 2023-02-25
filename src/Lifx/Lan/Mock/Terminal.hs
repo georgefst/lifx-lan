@@ -27,9 +27,6 @@ newtype Mock a = Mock (StateT (Map Device MockState) (ReaderT [Device] (ExceptT 
         , Applicative
         , Monad
         , MonadIO
-        , MonadError MockError
-        , MonadReader [Device]
-        , MonadState (Map Device MockState)
         )
 
 data MockState = MockState
@@ -71,12 +68,12 @@ data MockError
 
 instance MonadLifx Mock where
     type MonadLifxError Mock = MockError
-    lifxThrow = throwError
+    lifxThrow = Mock . throwError
     liftProductLookupError = MockProductLookupError
 
     sendMessage d m = do
         s <- lookupDevice d
-        r <- case m of
+        r <- Mock case m of
             GetService -> whenProvided s.service
             GetHostFirmware -> whenProvided s.hostFirmware
             GetPower -> pure $ StatePower s.light.power
@@ -85,7 +82,7 @@ instance MonadLifx Mock where
             GetColor -> pure s.light
             SetColor hsbk _t -> modify $ Map.insert d s{light = s.light{hsbk}}
             SetLightPower (convertPower -> power) _t -> modify $ Map.insert d s{light = s.light{power}}
-        ds <- ask
+        ds <- Mock ask
         for_ ds \d' -> do
             s' <- lookupDevice d'
             liftIO do
@@ -95,9 +92,9 @@ instance MonadLifx Mock where
         liftIO $ putStrLn ""
         pure r
       where
-        lookupDevice = maybe (lifxThrow $ MockNoSuchDevice d) pure <=< gets . Map.lookup
+        lookupDevice = maybe (lifxThrow $ MockNoSuchDevice d) pure <=< Mock . gets . Map.lookup
         whenProvided = maybe (throwError MockDataNotProvided) pure
         convertPower = fromIntegral . fromEnum
         mkSGR s = [SetRGBColor Background . uncurryRGB sRGB $ hsbkToRgb s.hsbk | s.power /= 0]
-    broadcastMessage m = ask >>= traverse \d -> (d,) <$> sendMessage d m
-    discoverDevices = asks . maybe id take
+    broadcastMessage m = Mock ask >>= traverse \d -> (d,) <$> sendMessage d m
+    discoverDevices = Mock . asks . maybe id take
