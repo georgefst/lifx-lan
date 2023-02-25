@@ -1779,6 +1779,46 @@ productInfo =
                 , upgrades = []
                 }
             , ProductInfo
+                { pid = 121
+                , name = "LIFX Downlight Intl"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Just
+                        ( 1500
+                        , 9000
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 122
+                , name = "LIFX Downlight US"
+                , features = PartialFeatures
+                    { hev = Nothing
+                    , color = Just True
+                    , chain = Just False
+                    , matrix = Just False
+                    , relays = Nothing
+                    , buttons = Nothing
+                    , infrared = Just False
+                    , multizone = Just False
+                    , temperatureRange = Just
+                        ( 1500
+                        , 9000
+                        )
+                    , extendedMultizone = Nothing
+                    }
+                , upgrades = []
+                }
+            , ProductInfo
                 { pid = 123
                 , name = "LIFX Color US"
                 , features = PartialFeatures
