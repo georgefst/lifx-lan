@@ -1,5 +1,9 @@
 # Revision history for lifx-lan
 
+## 0.8 -- 25-02-2023
+- Various minor improvements to MTL interfaces.
+- Update to latest products list
+
 ## 0.7.1 -- 21-10-2022
 - Handle invalid UTF-8 in light label.
 - Ensure discovery exits successfully when zero devices are wanted.
