@@ -100,4 +100,4 @@ instance MonadLifx Mock where
         convertPower = fromIntegral . fromEnum
         mkSGR s = [SetRGBColor Background . uncurryRGB sRGB $ hsbkToRgb s.hsbk | s.power /= 0]
     broadcastMessage m = ask >>= traverse \d -> (d,) <$> sendMessage d m
-    discoverDevices x = maybe id take x <$> ask
+    discoverDevices = asks . maybe id take
