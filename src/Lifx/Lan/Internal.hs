@@ -101,10 +101,11 @@ instance MonadReader s m => MonadReader s (LifxT m) where
         ExceptT $ local f $ unLifx e s m
 instance MonadState s m => MonadState s (LifxT m) where
     state = lift . state
-instance MonadError e m => MonadError e (LifxT m) where
-    throwError = lift . throwError @e @m
-    catchError m h = LifxT $ StateT \s -> ReaderT \e ->
-        ExceptT $ catchError @e @m (unLifx e s m) (unLifx e s . h)
+instance MonadError e m => MonadError (Either e LifxError) (LifxT m) where
+    throwError = either (lift . throwError @e @m) (LifxT . throwError)
+    catchError m h = LifxT $ StateT \s -> ReaderT \e -> ExceptT do
+        (m', s'') <- either ((,s) . h . Right) (first pure) <$> unLifx e s m
+        catchError @e @m (unLifx e s'' m') (unLifx e s'' . h . Left)
 
 unLifx :: (Socket, Word32, Int) -> Word8 -> LifxT m a -> m (Either LifxError (a, Word8))
 unLifx e s = runExceptT . flip runReaderT e . flip runStateT s . (.unwrap)
