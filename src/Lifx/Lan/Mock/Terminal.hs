@@ -4,6 +4,7 @@
 -- | Rather than interacting with any bulbs, simulate interactions by printing to a terminal.
 module Lifx.Lan.Mock.Terminal (Mock, MockError, runMock, runMockFull, MockState (MockState)) where
 
+import Control.Monad
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
