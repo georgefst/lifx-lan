@@ -13,7 +13,7 @@
       packages.${system}.default = lifx-lan;
       devShells.${system}.default = hpkgs.shellFor {
         packages = p: [ lifx-lan ];
-        nativeBuildInputs = tools; #++ [ pkgs.zlib ];
+        nativeBuildInputs = tools;
       };
     };
 }
