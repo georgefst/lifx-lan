@@ -37,7 +37,7 @@ data HSBK = HSBK
 data LifxError
     = DecodeFailure BS.ByteString ByteOffset String
     | RecvTimeout
-    | BroadcastTimeout [HostAddress] -- contains the addresses which we have received valid responses from
+    | BroadcastTimeout [Device] -- contains the addresses which we have received valid responses from
     | WrongPacketType Word16 Word16 -- expected, then actual
     | WrongSender Device HostAddress -- expected, then actual
     | UnexpectedSockAddrType SockAddr

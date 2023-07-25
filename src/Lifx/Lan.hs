@@ -230,20 +230,20 @@ class MessageResult a where
         -- | Transform output and discard messages which return 'Nothing'.
         (HostAddress -> a -> m (Maybe b)) ->
         -- | Return once this predicate over received messages passes. Otherwise just keep waiting until timeout.
-        Maybe (Map HostAddress (NonEmpty b) -> Bool) ->
+        Maybe (Map Device (NonEmpty b) -> Bool) ->
         Message r ->
         m (Map Device (NonEmpty b))
     default broadcastAndGetResult ::
         (MonadLifxIO m, Response a) =>
         (HostAddress -> a -> m (Maybe b)) ->
-        Maybe (Map HostAddress (NonEmpty b) -> Bool) ->
+        Maybe (Map Device (NonEmpty b) -> Bool) ->
         Message r ->
         m (Map Device (NonEmpty b))
     broadcastAndGetResult filter' maybeFinished msg = do
         timeoutDuration <- getTimeout
         broadcast msg
         t0 <- liftIO getCurrentTime
-        fmap (Map.mapKeysMonotonic Device) . flip execStateT Map.empty . untilM $
+        flip execStateT Map.empty . untilM $
             traverse gets maybeFinished >>= \case
                 Just True -> pure True
                 _ -> do
@@ -258,7 +258,7 @@ class MessageResult a where
                                         Just x -> do
                                             hostAddr <- lift $ hostAddressFromSock addr
                                             lift (filter' hostAddr x) >>= \case
-                                                Just x' -> modify (Map.insertWith (<>) hostAddr (pure x')) >> pure False
+                                                Just x' -> modify (Map.insertWith (<>) (Device hostAddr) (pure x')) >> pure False
                                                 Nothing -> pure False
                                         Nothing -> pure False
                                 Nothing -> do
