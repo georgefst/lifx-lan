@@ -687,3 +687,38 @@ broadcast :: MonadLifxIO m => Message r -> m ()
 broadcast msg = do
     incrementCounter
     sendMessage' False (tupleToHostAddress (255, 255, 255, 255)) msg
+
+main :: IO [(Device, LightState)]
+main = do
+    sock <- liftIO $ socket AF_INET Datagram defaultProtocol
+    liftIO $ setSocketOption sock Broadcast 1
+    liftIO . bind sock $ SockAddrInet defaultPort 0
+    source <- randomIO
+    let r0 = do
+            timeoutDuration <- getTimeout @Lifx
+            broadcast GetColor
+            t0 <- liftIO getCurrentTime
+            fmap (Map.mapKeysMonotonic Device) . flip execStateT Map.empty $ untilM do
+                t <- liftIO getCurrentTime
+                let timeLeft = timeoutDuration - nominalDiffTimeToInt @Micro (diffUTCTime t t0)
+                if timeLeft < 0
+                    then pure False
+                    else do
+                        r <- liftIO . timeout timeLeft . recvFrom sock $ headerSize + messageSize @LightState
+                        case r of
+                            Just (bs, addr) -> do
+                                lift (decodeMessage @LightState bs) >>= \case
+                                    Just x -> do
+                                        hostAddr <- lift $ hostAddressFromSock addr
+                                        modify (Map.insertWith (<>) hostAddr (pure @NonEmpty x)) >> pure False
+                                    Nothing -> pure False
+                            Nothing -> pure True
+    let r1 = r0.unwrap
+    let r4 = concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList <$> r1
+    r5 <-
+        runExceptT
+            . flip runReaderT (sock, source, 2_000_000)
+            $ evalStateT r4 0
+    case r5 of
+        Left e -> ioError $ mkIOError userErrorType ("LIFX LAN: " <> show e) Nothing Nothing
+        Right x -> pure x
