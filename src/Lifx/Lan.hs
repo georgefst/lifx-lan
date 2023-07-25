@@ -375,12 +375,12 @@ msgResWitness f m = case m of
 -- | A simple implementation of 'MonadLifx'.
 type Lifx = LifxT IO
 
-{- | Note that this throws 'LifxError's as 'IOException's, and sets timeout to 5 seconds.
+{- | Note that this throws 'LifxError's as 'IOException's, sets timeout to 5 seconds, and uses dynamic ports.
 Use 'runLifxT' for more control.
 -}
 runLifx :: Lifx a -> IO a
 runLifx m =
-    runLifxT 5_000_000 m >>= \case
+    runLifxT 5_000_000 Nothing m >>= \case
         Left e -> ioError $ mkIOError userErrorType ("LIFX LAN: " <> show e) Nothing Nothing
         Right x -> pure x
 
@@ -388,12 +388,15 @@ runLifxT ::
     (MonadIO m) =>
     -- | Timeout for waiting for message responses, in microseconds.
     Int ->
+    -- | A port on which to receive messages. This could be useful when using a firewall which blocks most ports.
+    -- 'Nothing' uses 'defaultPort'.
+    Maybe PortNumber ->
     LifxT m a ->
     m (Either LifxError a)
-runLifxT timeoutDuration (LifxT x) = do
+runLifxT timeoutDuration port (LifxT x) = do
     sock <- liftIO $ socket AF_INET Datagram defaultProtocol
     liftIO $ setSocketOption sock Broadcast 1
-    liftIO . bind sock $ SockAddrInet defaultPort 0
+    liftIO . bind sock $ SockAddrInet (fromMaybe defaultPort port) 0
     source <-
         untilJustM $
             randomIO <&> \case
