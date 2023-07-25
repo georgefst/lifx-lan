@@ -369,7 +369,12 @@ runLifxT timeoutDuration (LifxT x) = do
     sock <- liftIO $ socket AF_INET Datagram defaultProtocol
     liftIO $ setSocketOption sock Broadcast 1
     liftIO . bind sock $ SockAddrInet defaultPort 0
-    source <- randomIO
+    source <-
+        untilJustM $
+            randomIO <&> \case
+                -- 0 and 1 cause problems on old firmware: https://lan.developer.lifx.com/docs/packet-contents#frame-header
+                n | n > 1 -> Just n
+                _ -> Nothing
     runExceptT $ runReaderT (evalStateT x 0) (sock, source, timeoutDuration)
 
 class Monad m => MonadLifx m where
