@@ -1,9 +1,12 @@
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
+{-# OPTIONS_GHC -Wno-unused-imports #-}
 
 module Lifx.Lan (
     main,
 ) where
 
+import Control.Concurrent
+import Control.Exception
 import Control.Monad
 import Control.Monad.Except
 import Data.Binary.Get hiding (label)
@@ -17,32 +20,47 @@ import Data.Text.Encoding.Error
 import Data.Word
 import Network.Socket
 import Network.Socket.ByteString
+import System.Exit (exitSuccess)
 import System.Random
 
 main = do
     sock <- liftIO $ socket AF_INET Datagram defaultProtocol
     setSocketOption sock Broadcast 1
-    bind sock $ SockAddrInet defaultPort 0
+
+    -- bind sock $ SockAddrInet defaultPort 0
+    -- bizarrely, this actually works for the overall problem
+    -- I suppose the earlier behaviour with repeats was "it works if there's been other recent activity on that port, even from another address"
+    -- also weirdly, there's about a 5-second cool-off in GHCI in which using the same address as before doesn't work
+    let myPort = 56721
+    bind sock $ SockAddrInet myPort 0
+
+    -- void $ sendTo sock "yo" (SockAddrInet myPort (tupleToHostAddress (127, 0, 0, 1)))
+    -- print =<< recv sock 4096
+
+    -- const exitSuccess =<< print =<< recv sock 4096
+
     source <- randomIO
     counter <- randomIO
 
+    threadDelay 500_000
     sendRes <-
         sendTo
             sock
             (BL.toStrict $ runPut $ encodeMessage True False counter source)
+            -- (SockAddrInet lifxPort (tupleToHostAddress (192, 168, 1, 190)))
             (SockAddrInet lifxPort (tupleToHostAddress (255, 255, 255, 255)))
     putStrLn $ "sent: " <> show sendRes
 
     recvRes <- recvFrom sock $ headerSize + lightStateMessageSize
     putStrLn $ "received: " <> show recvRes
 
-    pure case runGetOrFail getHeader $ BL.fromStrict $ fst recvRes of
-        Left e -> error $ show e
-        Right (bs', _, Header{}) -> case runGetOrFail @LightState getBody bs' of
-            Left e -> error $ show e
-            Right (_, _, res) -> case snd recvRes of
-                SockAddrInet _ ha -> (hostAddressToTuple ha, res)
-                a -> error $ show a
+    -- pure case runGetOrFail getHeader $ BL.fromStrict $ fst recvRes of
+    --     Left e -> error $ show e
+    --     Right (bs', _, Header{}) -> case runGetOrFail @LightState getBody bs' of
+    --         Left e -> error $ show e
+    --         Right (_, _, res) -> case snd recvRes of
+    --             SockAddrInet _ ha -> (hostAddressToTuple ha, res)
+    --             a -> error $ show a
 
 lifxPort = 56700
 
