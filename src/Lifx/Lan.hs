@@ -210,7 +210,7 @@ data LightState = LightState
 {- Message responses -}
 
 class MessageResult a where
-    getSendResult :: MonadLifxIO m => Device -> m a
+    getSendResult :: (MonadLifxIO m) => Device -> m a
     default getSendResult :: (MonadLifxIO m, Response a) => Device -> m a
     getSendResult receiver = untilJustM do
         timeoutDuration <- getTimeout
@@ -226,7 +226,7 @@ class MessageResult a where
                 Right r -> pure r
 
     broadcastAndGetResult ::
-        MonadLifxIO m =>
+        (MonadLifxIO m) =>
         -- | Transform output and discard messages which return 'Nothing'.
         (HostAddress -> a -> m (Maybe b)) ->
         -- | Return once this predicate over received messages passes. Otherwise just keep waiting until timeout.
@@ -334,7 +334,7 @@ instance Response LightState where
             _ -> "impossible"
 instance MessageResult LightState
 
-msgResWitness :: (MessageResult r => Message r -> a) -> (Message r -> a)
+msgResWitness :: ((MessageResult r) => Message r -> a) -> (Message r -> a)
 msgResWitness f m = case m of
     GetService{} -> f m
     GetHostFirmware{} -> f m
@@ -360,7 +360,7 @@ runLifx m =
         Right x -> pure x
 
 runLifxT ::
-    MonadIO m =>
+    (MonadIO m) =>
     -- | Timeout for waiting for message responses, in microseconds.
     Int ->
     LifxT m a ->
@@ -377,7 +377,7 @@ runLifxT timeoutDuration (LifxT x) = do
                 _ -> Nothing
     runExceptT $ runReaderT (evalStateT x 0) (sock, source, timeoutDuration)
 
-class Monad m => MonadLifx m where
+class (Monad m) => MonadLifx m where
     -- | The type of errors associated with 'm'.
     type MonadLifxError m
 
@@ -395,7 +395,7 @@ class Monad m => MonadLifx m where
     -- otherwise just keep waiting until timeout.
     discoverDevices :: Maybe Int -> m [Device]
 
-instance MonadIO m => MonadLifx (LifxT m) where
+instance (MonadIO m) => MonadLifx (LifxT m) where
     type MonadLifxError (LifxT m) = LifxError
     lifxThrow = lifxThrowIO
     liftProductLookupError = ProductLookupError
@@ -416,21 +416,21 @@ instance MonadIO m => MonadLifx (LifxT m) where
             checkPort port
             pure . guard $ service == ServiceUDP
         p = nDevices <&> \n -> (>= n) . length
-instance MonadLifx m => MonadLifx (MaybeT m) where
+instance (MonadLifx m) => MonadLifx (MaybeT m) where
     type MonadLifxError (MaybeT m) = MonadLifxError m
     liftProductLookupError = liftProductLookupError @m
     sendMessage = lift .: sendMessage
     broadcastMessage = lift . broadcastMessage
     discoverDevices = lift . discoverDevices
     lifxThrow = lift . lifxThrow
-instance MonadLifx m => MonadLifx (ExceptT e m) where
+instance (MonadLifx m) => MonadLifx (ExceptT e m) where
     type MonadLifxError (ExceptT e m) = MonadLifxError m
     liftProductLookupError = liftProductLookupError @m
     sendMessage = lift .: sendMessage
     broadcastMessage = lift . broadcastMessage
     discoverDevices = lift . discoverDevices
     lifxThrow = lift . lifxThrow
-instance MonadLifx m => MonadLifx (StateT s m) where
+instance (MonadLifx m) => MonadLifx (StateT s m) where
     type MonadLifxError (StateT s m) = MonadLifxError m
     liftProductLookupError = liftProductLookupError @m
     sendMessage = lift .: sendMessage
@@ -444,7 +444,7 @@ instance (MonadLifx m, Monoid t) => MonadLifx (WriterT t m) where
     broadcastMessage = lift . broadcastMessage
     discoverDevices = lift . discoverDevices
     lifxThrow = lift . lifxThrow
-instance MonadLifx m => MonadLifx (ReaderT e m) where
+instance (MonadLifx m) => MonadLifx (ReaderT e m) where
     type MonadLifxError (ReaderT e m) = MonadLifxError m
     liftProductLookupError = liftProductLookupError @m
     sendMessage = lift .: sendMessage
@@ -602,7 +602,7 @@ putMessagePayload = \case
         putWord32le $ nominalDiffTimeToInt @Milli d
 
 -- | Ask a device for its vendor and product ID, and look up info on it from the official database.
-getProductInfo :: forall m. MonadLifx m => Device -> m Product
+getProductInfo :: forall m. (MonadLifx m) => Device -> m Product
 getProductInfo dev = do
     StateHostFirmware{..} <- sendMessage dev GetHostFirmware
     v <- sendMessage dev GetVersion
@@ -634,7 +634,7 @@ fromIntegralSafe x =
         )
         $> fromIntegral x
 
-headerSize :: Num a => a
+headerSize :: (Num a) => a
 headerSize = 36
 
 nominalDiffTimeToInt :: forall f a r. (HasResolution r, f ~ Fixed r, Integral a) => NominalDiffTime -> a
@@ -643,10 +643,10 @@ nominalDiffTimeToInt t = fromInteger n
     MkFixed n = realToFrac @Pico @f $ nominalDiffTimeToSeconds t
 
 -- | Inverted 'whileM'.
-untilM :: Monad m => m Bool -> m ()
+untilM :: (Monad m) => m Bool -> m ()
 untilM = whileM . fmap not
 
-checkPort :: MonadLifxIO f => PortNumber -> f ()
+checkPort :: (MonadLifxIO f) => PortNumber -> f ()
 checkPort port = when (port /= lifxPort) . lifxThrowIO $ UnexpectedPort port
 
 -- these helpers are all used by 'sendMessage' and 'broadcastMessage'
@@ -666,7 +666,7 @@ decodeMessage bs = do
                         Right (_, _, res) -> pure $ Just res
   where
     throwDecodeFailure (bs', bo, e) = lifxThrowIO $ DecodeFailure (BL.toStrict bs') bo e
-sendMessage' :: MonadLifxIO m => Bool -> HostAddress -> Message r -> m ()
+sendMessage' :: (MonadLifxIO m) => Bool -> HostAddress -> Message r -> m ()
 sendMessage' tagged receiver msg = do
     sock <- getSocket
     counter <- getCounter
@@ -676,11 +676,11 @@ sendMessage' tagged receiver msg = do
             sock
             (BL.toStrict $ encodeMessage tagged False counter source msg)
             (SockAddrInet lifxPort receiver)
-hostAddressFromSock :: MonadLifxIO m => SockAddr -> m HostAddress
+hostAddressFromSock :: (MonadLifxIO m) => SockAddr -> m HostAddress
 hostAddressFromSock = \case
     SockAddrInet port ha -> checkPort port >> pure ha
     addr -> lifxThrowIO $ UnexpectedSockAddrType addr
-receiveMessage :: MonadLifxIO m => Int -> Int -> m (Maybe (BS.ByteString, SockAddr))
+receiveMessage :: (MonadLifxIO m) => Int -> Int -> m (Maybe (BS.ByteString, SockAddr))
 receiveMessage t size = do
     sock <- getSocket
     liftIO
@@ -688,7 +688,7 @@ receiveMessage t size = do
         . recvFrom sock
         $ headerSize + size
 
-broadcast :: MonadLifxIO m => Message r -> m ()
+broadcast :: (MonadLifxIO m) => Message r -> m ()
 broadcast msg = do
     incrementCounter
     sendMessage' False (tupleToHostAddress (255, 255, 255, 255)) msg

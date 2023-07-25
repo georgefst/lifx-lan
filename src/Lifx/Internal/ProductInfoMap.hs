@@ -20,9 +20,9 @@ productInfoMap =
         productInfo <&> \VendorInfo{..} ->
             ( vid
             ,
-              ( defaults
-              , Map.fromList $ ((.pid) &&& id) <$> products
-              )
+                ( defaults
+                , Map.fromList $ ((.pid) &&& id) <$> products
+                )
             )
 
 -- | Information about a particular LIFX product.

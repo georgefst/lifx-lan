@@ -48,14 +48,14 @@ rgbToHsbk c =
         , kelvin = 0
         }
 
-interpolateColour :: Num a => a -> RGB a -> RGB a -> RGB a
+interpolateColour :: (Num a) => a -> RGB a -> RGB a -> RGB a
 interpolateColour r = liftA2 (\a b -> a * (r + b * (1 - r)))
 
 maxWord16 :: Float
 maxWord16 = fromIntegral $ maxBound @Word16
 
-minKelvin :: Num a => a
+minKelvin :: (Num a) => a
 minKelvin = 1500
 
-maxKelvin :: Num a => a
+maxKelvin :: (Num a) => a
 maxKelvin = 9000

@@ -46,7 +46,7 @@ data LifxError
     deriving (Eq, Ord, Show, Generic)
 
 -- | A monad for sending and receiving LIFX messages.
-class MonadIO m => MonadLifxIO m where
+class (MonadIO m) => MonadLifxIO m where
     getSocket :: m Socket
     getSource :: m Word32
     getTimeout :: m Int
@@ -65,7 +65,7 @@ class MonadIO m => MonadLifxIO m where
         m ()
     handleOldMessage _ _ _ _ = pure ()
 
-instance MonadIO m => MonadLifxIO (LifxT m) where
+instance (MonadIO m) => MonadLifxIO (LifxT m) where
     getSocket = LifxT $ asks fst3
     getSource = LifxT $ asks snd3
     getTimeout = LifxT $ asks thd3
@@ -95,13 +95,13 @@ newtype LifxT m a = LifxT
 
 instance MonadTrans LifxT where
     lift = LifxT . lift . lift . lift
-instance MonadReader s m => MonadReader s (LifxT m) where
+instance (MonadReader s m) => MonadReader s (LifxT m) where
     ask = lift ask
     local f m = LifxT $ StateT \s -> ReaderT \e ->
         ExceptT $ local f $ unLifx e s m
-instance MonadState s m => MonadState s (LifxT m) where
+instance (MonadState s m) => MonadState s (LifxT m) where
     state = lift . state
-instance MonadError e m => MonadError (Either e LifxError) (LifxT m) where
+instance (MonadError e m) => MonadError (Either e LifxError) (LifxT m) where
     throwError = either (lift . throwError @e @m) (LifxT . throwError)
     catchError m h = LifxT $ StateT \s -> ReaderT \e -> ExceptT do
         (m', s'') <- either ((,s) . h . Right) (first pure) <$> unLifx e s m
