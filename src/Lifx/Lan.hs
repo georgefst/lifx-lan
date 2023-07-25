@@ -688,37 +688,27 @@ broadcast msg = do
     incrementCounter
     sendMessage' False (tupleToHostAddress (255, 255, 255, 255)) msg
 
-main :: IO [(Device, LightState)]
 main = do
     sock <- liftIO $ socket AF_INET Datagram defaultProtocol
-    liftIO $ setSocketOption sock Broadcast 1
-    liftIO . bind sock $ SockAddrInet defaultPort 0
+    setSocketOption sock Broadcast 1
+    bind sock $ SockAddrInet defaultPort 0
     source <- randomIO
-    flip evalStateT 0 . fmap (concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList) $ do
-        let timeoutDuration = 2_000_000
-        modify succ'
-        counter <- gets id
-        void . liftIO $
-            sendTo
-                sock
-                (BL.toStrict $ encodeMessage False False counter source GetColor)
-                (SockAddrInet lifxPort (tupleToHostAddress (255, 255, 255, 255)))
-        t0 <- liftIO getCurrentTime
-        fmap (Map.mapKeysMonotonic Device) . flip execStateT Map.empty $ untilM do
-            t <- liftIO getCurrentTime
-            let timeLeft = timeoutDuration - nominalDiffTimeToInt @Micro (diffUTCTime t t0)
-            if timeLeft < 0
-                then pure False
-                else do
-                    r <- liftIO . timeout timeLeft . recvFrom sock $ headerSize + messageSize @LightState
-                    case r of
-                        Just (bs, addr) -> case runGetOrFail Binary.get $ BL.fromStrict bs of
-                            Left e -> error $ show e
-                            Right (bs', _, Header{}) -> case runGetOrFail getBody bs' of
-                                Left e -> error $ show e
-                                Right (_, _, res) -> do
-                                    hostAddr <- case addr of
-                                        SockAddrInet port ha -> when (port /= lifxPort) (error $ show port) >> pure ha
-                                        _ -> error $ show addr
-                                    modify (Map.insertWith (<>) hostAddr (pure @NonEmpty res)) >> pure False
-                        Nothing -> pure True
+    counter <- randomIO
+
+    sendRes <-
+        sendTo
+            sock
+            (BL.toStrict $ encodeMessage False False counter source GetColor)
+            (SockAddrInet lifxPort (tupleToHostAddress (255, 255, 255, 255)))
+    putStrLn $ "sent: " <> show sendRes
+
+    recvRes <- recvFrom sock $ headerSize + messageSize @LightState
+    putStrLn $ "received: " <> show recvRes
+
+    pure case runGetOrFail Binary.get $ BL.fromStrict $ fst recvRes of
+        Left e -> error $ show e
+        Right (bs', _, Header{}) -> case runGetOrFail @LightState getBody bs' of
+            Left e -> error $ show e
+            Right (_, _, res) -> case snd recvRes of
+                SockAddrInet _ ha -> (Device ha, res)
+                a -> error $ show a
