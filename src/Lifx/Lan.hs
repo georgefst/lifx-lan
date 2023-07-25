@@ -694,7 +694,7 @@ main = do
     liftIO $ setSocketOption sock Broadcast 1
     liftIO . bind sock $ SockAddrInet defaultPort 0
     source <- randomIO
-    r5 <- runExceptT . flip evalStateT 0 . fmap (concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList) $ do
+    flip evalStateT 0 . fmap (concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList) $ do
         let timeoutDuration = 2_000_000
         modify succ'
         counter <- gets id
@@ -711,24 +711,14 @@ main = do
                 then pure False
                 else do
                     r <- liftIO . timeout timeLeft . recvFrom sock $ headerSize + messageSize @LightState
-                    let throwDecodeFailure (bs', bo, e) = throwError $ DecodeFailure (BL.toStrict bs') bo e
                     case r of
                         Just (bs, addr) -> case runGetOrFail Binary.get $ BL.fromStrict bs of
-                            Left e -> throwDecodeFailure e
-                            Right (bs', _, Header{packetType, sequenceCounter}) ->
-                                if sequenceCounter /= counter
-                                    then (\_ _ _ _ -> pure ()) counter sequenceCounter packetType bs' >> pure False
-                                    else do
-                                        when (packetType /= expectedPacketType @LightState) . throwError $
-                                            WrongPacketType (expectedPacketType @LightState) packetType
-                                        case runGetOrFail getBody bs' of
-                                            Left e -> throwDecodeFailure e
-                                            Right (_, _, res) -> do
-                                                hostAddr <- case addr of
-                                                    SockAddrInet port ha -> (when (port /= lifxPort) . throwError $ UnexpectedPort port) >> pure ha
-                                                    _ -> throwError $ UnexpectedSockAddrType addr
-                                                modify (Map.insertWith (<>) hostAddr (pure @NonEmpty res)) >> pure False
+                            Left e -> error $ show e
+                            Right (bs', _, Header{}) -> case runGetOrFail getBody bs' of
+                                Left e -> error $ show e
+                                Right (_, _, res) -> do
+                                    hostAddr <- case addr of
+                                        SockAddrInet port ha -> when (port /= lifxPort) (error $ show port) >> pure ha
+                                        _ -> error $ show addr
+                                    modify (Map.insertWith (<>) hostAddr (pure @NonEmpty res)) >> pure False
                         Nothing -> pure True
-    case r5 of
-        Left e -> ioError $ mkIOError userErrorType ("LIFX LAN: " <> show e) Nothing Nothing
-        Right x -> pure x
