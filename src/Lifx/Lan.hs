@@ -694,31 +694,41 @@ main = do
     liftIO $ setSocketOption sock Broadcast 1
     liftIO . bind sock $ SockAddrInet defaultPort 0
     source <- randomIO
-    let r0 = do
-            timeoutDuration <- getTimeout @Lifx
-            broadcast GetColor
-            t0 <- liftIO getCurrentTime
-            fmap (Map.mapKeysMonotonic Device) . flip execStateT Map.empty $ untilM do
-                t <- liftIO getCurrentTime
-                let timeLeft = timeoutDuration - nominalDiffTimeToInt @Micro (diffUTCTime t t0)
-                if timeLeft < 0
-                    then pure False
-                    else do
-                        r <- liftIO . timeout timeLeft . recvFrom sock $ headerSize + messageSize @LightState
-                        case r of
-                            Just (bs, addr) -> do
-                                lift (decodeMessage @LightState bs) >>= \case
-                                    Just x -> do
-                                        hostAddr <- lift $ hostAddressFromSock addr
-                                        modify (Map.insertWith (<>) hostAddr (pure @NonEmpty x)) >> pure False
-                                    Nothing -> pure False
-                            Nothing -> pure True
-    let r1 = r0.unwrap
-    let r4 = concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList <$> r1
-    r5 <-
-        runExceptT
-            . flip runReaderT (sock, source, 2_000_000)
-            $ evalStateT r4 0
+    r5 <- runExceptT . flip evalStateT 0 . fmap (concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList) $ do
+        let timeoutDuration = 2_000_000
+        modify succ'
+        counter <- gets id
+        void . liftIO $
+            sendTo
+                sock
+                (BL.toStrict $ encodeMessage False False counter source GetColor)
+                (SockAddrInet lifxPort (tupleToHostAddress (255, 255, 255, 255)))
+        t0 <- liftIO getCurrentTime
+        fmap (Map.mapKeysMonotonic Device) . flip execStateT Map.empty $ untilM do
+            t <- liftIO getCurrentTime
+            let timeLeft = timeoutDuration - nominalDiffTimeToInt @Micro (diffUTCTime t t0)
+            if timeLeft < 0
+                then pure False
+                else do
+                    r <- liftIO . timeout timeLeft . recvFrom sock $ headerSize + messageSize @LightState
+                    let throwDecodeFailure (bs', bo, e) = throwError $ DecodeFailure (BL.toStrict bs') bo e
+                    case r of
+                        Just (bs, addr) -> case runGetOrFail Binary.get $ BL.fromStrict bs of
+                            Left e -> throwDecodeFailure e
+                            Right (bs', _, Header{packetType, sequenceCounter}) ->
+                                if sequenceCounter /= counter
+                                    then (\_ _ _ _ -> pure ()) counter sequenceCounter packetType bs' >> pure False
+                                    else do
+                                        when (packetType /= expectedPacketType @LightState) . throwError $
+                                            WrongPacketType (expectedPacketType @LightState) packetType
+                                        case runGetOrFail getBody bs' of
+                                            Left e -> throwDecodeFailure e
+                                            Right (_, _, res) -> do
+                                                hostAddr <- case addr of
+                                                    SockAddrInet port ha -> (when (port /= lifxPort) . throwError $ UnexpectedPort port) >> pure ha
+                                                    _ -> throwError $ UnexpectedSockAddrType addr
+                                                modify (Map.insertWith (<>) hostAddr (pure @NonEmpty res)) >> pure False
+                        Nothing -> pure True
     case r5 of
         Left e -> ioError $ mkIOError userErrorType ("LIFX LAN: " <> show e) Nothing Nothing
         Right x -> pure x
