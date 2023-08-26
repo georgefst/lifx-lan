@@ -47,7 +47,17 @@ Note that sending some messages (e.g. 'GetVersion') will throw exceptions, since
 See `runMockFull` for more control.
 -}
 runMock :: [(Device, Text)] -> Mock a -> IO (Either MockError a)
-runMock = runMockFull . fmap (second \t -> MockState (LightState (HSBK 0 0 0 0) 1 t) Nothing Nothing Nothing)
+runMock =
+    runMockFull
+        . map
+            ( second \label ->
+                MockState
+                    { light = LightState (HSBK 0 0 0 0) 1 label
+                    , service = Nothing
+                    , hostFirmware = Nothing
+                    , version = Nothing
+                    }
+            )
 
 -- | More general version of `runMock`, which allows specifying extra information about devices.
 runMockFull :: [(Device, MockState)] -> Mock a -> IO (Either MockError a)
