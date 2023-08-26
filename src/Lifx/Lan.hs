@@ -41,6 +41,7 @@ module Lifx.Lan (
     StateHostFirmware (..),
     StatePower (..),
     StateVersion (..),
+    StateGroup (..),
     LightState (..),
 
     -- ** Product info
@@ -71,6 +72,7 @@ import Data.Foldable
 import Data.Functor
 import Data.Maybe
 import Data.Time
+import Data.Time.Clock.POSIX
 import Data.Word
 import Network.Socket
 import System.IO.Error
@@ -146,6 +148,8 @@ data Message r where
     SetPower :: Bool -> Message ()
     -- | https://lan.developer.lifx.com/docs/querying-the-device-for-data#getversion---packet-32
     GetVersion :: Message StateVersion
+    -- | https://lan.developer.lifx.com/docs/querying-the-device-for-data#getgroup---packet-51
+    GetGroup :: Message StateGroup
     -- | https://lan.developer.lifx.com/docs/querying-the-device-for-data#getcolor---packet-101
     GetColor :: Message LightState
     -- | https://lan.developer.lifx.com/docs/changing-a-device#setcolor---packet-102
@@ -196,6 +200,17 @@ data StateVersion = StateVersion
     -- ^ For LIFX products this value is 1. There may be devices in the future with a different vendor value.
     , product :: Word32
     -- ^ The product id of the device. The available products can be found in our Product Registry.
+    }
+    deriving (Eq, Ord, Show, Generic)
+
+-- | https://lan.developer.lifx.com/docs/information-messages#stategroup---packet-53
+data StateGroup = StateGroup
+    { group :: BS.ByteString
+    -- ^ The unique identifier of this group as a UUID.
+    , label :: Text
+    -- ^ The name assigned to this group.
+    , updatedAt :: POSIXTime
+    -- ^ When this group was set on the device.
     }
     deriving (Eq, Ord, Show, Generic)
 
@@ -318,6 +333,15 @@ instance Response StateVersion where
         skip 4
         pure StateVersion{product = p, ..}
 instance MessageResult StateVersion
+instance Response StateGroup where
+    expectedPacketType = 53
+    messageSize = 56
+    getBody = do
+        group <- getByteString 16
+        label <- either (fail . showDecodeError) pure . decodeUtf8' . BS.takeWhile (/= 0) =<< getByteString 32
+        updatedAt <- secondsToNominalDiffTime . MkFixed . (* 1000) . fromIntegral <$> getWord64le
+        pure StateGroup{..}
+instance MessageResult StateGroup
 instance Response LightState where
     expectedPacketType = 107
     messageSize = 52
@@ -328,10 +352,6 @@ instance Response LightState where
         label <- either (fail . showDecodeError) pure . decodeUtf8' . BS.takeWhile (/= 0) =<< getByteString 32
         skip 8
         pure LightState{..}
-      where
-        showDecodeError = \case
-            DecodeError s _ -> s
-            _ -> "impossible"
 instance MessageResult LightState
 
 msgResWitness :: ((MessageResult r) => Message r -> a) -> (Message r -> a)
@@ -341,6 +361,7 @@ msgResWitness f m = case m of
     GetPower{} -> f m
     SetPower{} -> f m
     GetVersion{} -> f m
+    GetGroup{} -> f m
     GetColor{} -> f m
     SetColor{} -> f m
     SetLightPower{} -> f m
@@ -556,6 +577,12 @@ messageHeader tagged ackRequired sequenceCounter source = \case
             , packetType = 32
             , ..
             }
+    GetGroup{} ->
+        Header
+            { size = headerSize
+            , packetType = 51
+            , ..
+            }
     GetColor{} ->
         Header
             { size = headerSize
@@ -589,6 +616,7 @@ putMessagePayload = \case
     SetPower b ->
         putWord16le if b then maxBound else minBound
     GetVersion -> mempty
+    GetGroup -> mempty
     GetColor -> mempty
     SetColor HSBK{..} d -> do
         putWord8 0
@@ -692,3 +720,8 @@ broadcast :: (MonadLifxIO m) => Message r -> m ()
 broadcast msg = do
     incrementCounter
     sendMessage' False (tupleToHostAddress (255, 255, 255, 255)) msg
+
+showDecodeError :: UnicodeException -> String
+showDecodeError = \case
+    DecodeError s _ -> s
+    _ -> "impossible"
