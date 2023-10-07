@@ -102,6 +102,7 @@ instance MonadLifx Mock where
             GetHostFirmware -> whenProvided s.hostFirmware
             GetPower -> pure $ StatePower s.light.power
             SetPower (convertPower -> power) -> modify $ Map.insert d s{light = s.light{power}}
+            SetLabel label -> modify $ Map.insert d s{light = s.light{label}}
             GetVersion -> whenProvided s.version
             GetGroup -> pure s.group
             GetColor -> pure s.light

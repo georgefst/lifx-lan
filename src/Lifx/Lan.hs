@@ -92,6 +92,7 @@ import Data.Binary.Get (
  )
 import Data.Binary.Put (
     Put,
+    putByteString,
     putWord16le,
     putWord32le,
     putWord64be,
@@ -105,7 +106,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import Data.Text.Encoding (decodeUtf8')
+import Data.Text.Encoding (decodeUtf8', encodeUtf8)
 import Data.Text.Encoding.Error (UnicodeException (DecodeError))
 import GHC.Generics (Generic)
 import Network.Socket.ByteString (recvFrom, sendTo)
@@ -146,6 +147,8 @@ data Message r where
     GetPower :: Message StatePower
     -- | https://lan.developer.lifx.com/docs/changing-a-device#setpower---packet-21
     SetPower :: Bool -> Message ()
+    -- | https://lan.developer.lifx.com/docs/changing-a-device#setlabel---packet-24
+    SetLabel :: Text -> Message ()
     -- | https://lan.developer.lifx.com/docs/querying-the-device-for-data#getversion---packet-32
     GetVersion :: Message StateVersion
     -- | https://lan.developer.lifx.com/docs/querying-the-device-for-data#getgroup---packet-51
@@ -360,6 +363,7 @@ msgResWitness f m = case m of
     GetHostFirmware{} -> f m
     GetPower{} -> f m
     SetPower{} -> f m
+    SetLabel{} -> f m
     GetVersion{} -> f m
     GetGroup{} -> f m
     GetColor{} -> f m
@@ -571,6 +575,12 @@ messageHeader tagged ackRequired sequenceCounter source = \case
             , packetType = 21
             , ..
             }
+    SetLabel{} ->
+        Header
+            { size = headerSize + 32
+            , packetType = 24
+            , ..
+            }
     GetVersion{} ->
         Header
             { size = headerSize
@@ -615,6 +625,11 @@ putMessagePayload = \case
     GetPower -> mempty
     SetPower b ->
         putWord16le if b then maxBound else minBound
+    SetLabel t -> do
+        putByteString b
+        replicateM_ (BS.length b) $ putWord8 0
+      where
+        b = encodeUtf8 t
     GetVersion -> mempty
     GetGroup -> mempty
     GetColor -> mempty
@@ -648,6 +663,7 @@ sendMessageAndWait d m = do
   where
     mt = case m of
         SetPower{} -> Nothing
+        SetLabel{} -> Nothing
         SetColor _ t -> Just t
         SetLightPower _ t -> Just t
     timeMicros t = round $ t * 1_000_000
