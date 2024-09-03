@@ -30,17 +30,18 @@ main = do
     resp <- httpLbs url =<< newManager tlsManagerSettings
     case eitherDecode @[VendorInfo] $ responseBody resp of
         Right xs -> do
-            output <- ormolu defaultConfig "" $
-                "-- | This is auto-generated - see the \"product-gen\" script.\n\
-                \module Lifx.Internal.ProductInfo where\n\
-                \\n\
-                \import Lifx.Internal.Product\n\
-                \\n\
-                \productInfo :: [VendorInfo]\n\
-                \productInfo =\n\
-                \"
-                    <> TL.toStrict (pShowOpt defaultOutputOptionsNoColor{outputOptionsInitialIndent = 4} xs)
-                    <> "\n"
+            output <-
+                ormolu defaultConfig "" $
+                    "-- | This is auto-generated - see the \"product-gen\" script.\n\
+                    \module Lifx.Internal.ProductInfo where\n\
+                    \\n\
+                    \import Lifx.Internal.Product\n\
+                    \\n\
+                    \productInfo :: [VendorInfo]\n\
+                    \productInfo =\n\
+                    \"
+                        <> TL.toStrict (pShowOpt defaultOutputOptionsNoColor{outputOptionsInitialIndent = 4} xs)
+                        <> "\n"
             T.writeFile ("src" </> "Lifx" </> "Internal" </> "ProductInfo.hs") output
         Left err -> putStrLn ("Decoding JSON failed: " <> err) >> exitFailure
 
