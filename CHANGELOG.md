@@ -1,10 +1,10 @@
 # Revision history for lifx-lan
 
-## 0.8 -- 25-02-2023
+## 0.8 -- 2023-02-25
 - Various minor improvements to MTL interfaces.
-- Update to latest products list
+- Update to latest products list.
 
-## 0.7.1 -- 21-10-2022
+## 0.7.1 -- 2022-10-21
 - Handle invalid UTF-8 in light label.
 - Ensure discovery exits successfully when zero devices are wanted.
 
@@ -39,8 +39,8 @@
 ## 0.4.0 -- 2021-07-30
 - Use abstract Device type.
 - Use more types from standard libraries where appropriate:
-    - PortNumber
-    - NominalDiffTime
+    - `PortNumber`
+    - `NominalDiffTime`
 - General cleanup and documentation improvements.
 
 ## 0.3.0 -- 2021-06-19
