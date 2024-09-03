@@ -42,7 +42,7 @@ main = do
         Left err -> putStrLn ("Decoding JSON failed: " <> err) >> exitFailure
 
 commit :: String
-commit = "ecf09f8da8c4e1aa504f37663985832bf10f3221"
+commit = "95b87839fd91cfd187f6ed25a985f64643aeb1b5"
 url :: Request
 url = parseRequest_ $ "https://raw.githubusercontent.com/LIFX/products/" <> commit <> "/products.json"
 

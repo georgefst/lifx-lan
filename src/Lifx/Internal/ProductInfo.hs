@@ -2018,7 +2018,7 @@ productInfo =
                 }
             , ProductInfo
                 { pid = 124
-                , name = "LIFX Color Intl"
+                , name = "LIFX Colour Intl"
                 , features =
                     PartialFeatures
                         { hev = Nothing
@@ -2150,7 +2150,7 @@ productInfo =
                 }
             , ProductInfo
                 { pid = 130
-                , name = "LIFX Color Intl"
+                , name = "LIFX Colour Intl"
                 , features =
                     PartialFeatures
                         { hev = Nothing
@@ -2282,7 +2282,7 @@ productInfo =
                 }
             , ProductInfo
                 { pid = 136
-                , name = "LIFX GU10 Color Intl"
+                , name = "LIFX GU10 Colour Intl"
                 , features =
                     PartialFeatures
                         { hev = Nothing
@@ -2326,7 +2326,755 @@ productInfo =
                 }
             , ProductInfo
                 { pid = 138
-                , name = "LIFX Candle Color Intl"
+                , name = "LIFX Candle Colour Intl"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just True
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 141
+                , name = "LIFX Neon US"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just True
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Just True
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 142
+                , name = "LIFX Neon Intl"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just True
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Just True
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 143
+                , name = "LIFX String US"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just True
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Just True
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 144
+                , name = "LIFX String Intl"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just True
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Just True
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 161
+                , name = "LIFX Outdoor Neon US"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just True
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Just True
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 162
+                , name = "LIFX Outdoor Neon Intl"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just True
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Just True
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 163
+                , name = "LIFX A19 US"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 164
+                , name = "LIFX BR30 US"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 165
+                , name = "LIFX A19 Intl"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 166
+                , name = "LIFX BR30 Intl"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 167
+                , name = "LIFX Downlight"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 168
+                , name = "LIFX Downlight"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 169
+                , name = "LIFX A21 1600lm US"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 170
+                , name = "LIFX A21 1600lm Intl"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 171
+                , name = "LIFX Round Spot US"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just True
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 173
+                , name = "LIFX Round Path US"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just True
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 174
+                , name = "LIFX Square Path US"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just True
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 175
+                , name = "LIFX PAR38 US"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 176
+                , name = "LIFX Ceiling US"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just True
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 177
+                , name = "LIFX Ceiling Intl"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just True
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 181
+                , name = "LIFX Color US"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 182
+                , name = "LIFX Colour Intl"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 185
+                , name = "LIFX Candle Color US"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just True
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 186
+                , name = "LIFX Candle Colour Intl"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just True
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 187
+                , name = "LIFX Candle Color US"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 188
+                , name = "LIFX Candle Colour Intl"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 203
+                , name = "LIFX String US"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just True
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Just True
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 204
+                , name = "LIFX String Intl"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just True
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Just True
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 205
+                , name = "LIFX Indoor Neon US"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just True
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Just True
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 206
+                , name = "LIFX Indoor Neon Intl"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just False
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just True
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Just True
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 215
+                , name = "LIFX Candle Color US"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just True
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 216
+                , name = "LIFX Candle Colour Intl"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just True
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 217
+                , name = "LIFX Tube US"
+                , features =
+                    PartialFeatures
+                        { hev = Nothing
+                        , color = Just True
+                        , chain = Just False
+                        , matrix = Just True
+                        , relays = Nothing
+                        , buttons = Nothing
+                        , infrared = Just False
+                        , multizone = Just False
+                        , temperatureRange =
+                            Just
+                                ( 1500
+                                , 9000
+                                )
+                        , extendedMultizone = Nothing
+                        }
+                , upgrades = []
+                }
+            , ProductInfo
+                { pid = 218
+                , name = "LIFX Tube Intl"
                 , features =
                     PartialFeatures
                         { hev = Nothing
