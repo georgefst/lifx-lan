@@ -1,5 +1,8 @@
 # Revision history for lifx-lan
 
+## 0.8.3 -- 2024-09-03
+- Update to latest products list.
+
 ## 0.8 -- 2023-02-25
 - Various minor improvements to MTL interfaces.
 - Update to latest products list.
