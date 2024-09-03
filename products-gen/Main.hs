@@ -14,11 +14,13 @@ so we'd need something like the ability to specify hs-source-dirs: https://githu
 module Main where
 
 import Data.Aeson
-import Data.Text.Lazy.IO qualified as TL
+import Data.Text.IO qualified as T
+import Data.Text.Lazy qualified as TL
 import Deriving.Aeson
 import Lifx.Internal.Product
 import Network.HTTP.Client
 import Network.HTTP.Client.TLS
+import Ormolu
 import System.Exit
 import System.FilePath
 import Text.Pretty.Simple
@@ -28,7 +30,7 @@ main = do
     resp <- httpLbs url =<< newManager tlsManagerSettings
     case eitherDecode @[VendorInfo] $ responseBody resp of
         Right xs -> do
-            TL.writeFile ("src" </> "Lifx" </> "Internal" </> "ProductInfo.hs") $
+            output <- ormolu defaultConfig "" $
                 "-- | This is auto-generated - see the \"product-gen\" script.\n\
                 \module Lifx.Internal.ProductInfo where\n\
                 \\n\
@@ -37,8 +39,9 @@ main = do
                 \productInfo :: [VendorInfo]\n\
                 \productInfo =\n\
                 \"
-                    <> pShowOpt defaultOutputOptionsNoColor{outputOptionsInitialIndent = 4} xs
+                    <> TL.toStrict (pShowOpt defaultOutputOptionsNoColor{outputOptionsInitialIndent = 4} xs)
                     <> "\n"
+            T.writeFile ("src" </> "Lifx" </> "Internal" </> "ProductInfo.hs") output
         Left err -> putStrLn ("Decoding JSON failed: " <> err) >> exitFailure
 
 commit :: String

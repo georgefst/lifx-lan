@@ -11,6 +11,7 @@ executable products-gen
         deriving-aeson,
         directory,
         filepath,
+        fourmolu,
         http-client,
         http-client-tls,
         pretty-simple,
