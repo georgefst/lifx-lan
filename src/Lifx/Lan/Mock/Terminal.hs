@@ -95,7 +95,7 @@ instance MonadLifx Mock where
     lifxThrow = Mock . throwError
     liftProductLookupError = MockProductLookupError
 
-    sendMessage d m = do
+    sendMessage d (m :: Message r) = do
         s <- lookupDevice d
         r <- Mock case m of
             GetService -> whenProvided s.service
@@ -119,6 +119,7 @@ instance MonadLifx Mock where
         pure r
       where
         lookupDevice = maybe (lifxThrow $ MockNoSuchDevice d) pure <=< Mock . gets . Map.lookup
+        whenProvided :: Maybe r -> StateT (Map Device MockState) (ReaderT [Device] (ExceptT MockError IO)) r
         whenProvided = maybe (throwError MockDataNotProvided) pure
         convertPower = fromIntegral . fromEnum
         mkSGR s = [SetRGBColor Background . uncurryRGB sRGB $ hsbkToRgb s.hsbk | s.power /= 0]
