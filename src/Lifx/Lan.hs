@@ -59,6 +59,7 @@ module Lifx.Lan (
 
 import Control.Concurrent
 import Control.Monad
+import Control.Monad.Catch
 import Control.Monad.Except
 import Control.Monad.Extra
 import Control.Monad.Reader
@@ -385,22 +386,29 @@ runLifx m =
         Right x -> pure x
 
 runLifxT ::
-    (MonadIO m) =>
+    (MonadIO m, MonadMask m) =>
     -- | Timeout for waiting for message responses, in microseconds.
     Int ->
     LifxT m a ->
     m (Either LifxError a)
-runLifxT timeoutDuration (LifxT x) = do
-    sock <- liftIO $ socket AF_INET Datagram defaultProtocol
-    liftIO $ setSocketOption sock Broadcast 1
-    liftIO . bind sock $ SockAddrInet defaultPort 0
-    source <-
-        untilJustM $
-            randomIO <&> \case
-                -- 0 and 1 cause problems on old firmware: https://lan.developer.lifx.com/docs/packet-contents#frame-header
-                n | n > 1 -> Just n
-                _ -> Nothing
-    runExceptT $ runReaderT (evalStateT x 0) (sock, source, timeoutDuration)
+runLifxT timeoutDuration (LifxT x) =
+    bracket
+        ( liftIO do
+            sock <- socket AF_INET Datagram defaultProtocol
+            setSocketOption sock Broadcast 1
+            bind sock $ SockAddrInet defaultPort 0
+            pure sock
+        )
+        (liftIO . close)
+        \sock -> do
+            source <-
+                liftIO
+                    . untilJustM
+                    $ randomIO <&> \case
+                        -- 0 and 1 cause problems on old firmware: https://lan.developer.lifx.com/docs/packet-contents#frame-header
+                        n | n > 1 -> Just n
+                        _ -> Nothing
+            runExceptT $ runReaderT (evalStateT x 0) (sock, source, timeoutDuration)
 
 class (Monad m) => MonadLifx m where
     -- | The type of errors associated with 'm'.
