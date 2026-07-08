@@ -34,6 +34,7 @@ library
         colour ^>= 2.3.6,
         composition ^>= 1.0.2.1,
         containers ^>= {0.6.2.1, 0.7},
+        exceptions ^>= {0.10},
         extra ^>= {1.7.1, 1.8},
         monad-loops ^>= 0.4.3,
         mtl ^>= {2.2.2, 2.3},
