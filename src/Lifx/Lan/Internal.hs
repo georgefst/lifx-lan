@@ -42,7 +42,6 @@ data LifxError
     | RecvTimeout
     | BroadcastTimeout [HostAddress] -- contains the addresses which we have received valid responses from
     | WrongPacketType Word16 Word16 -- expected, then actual
-    | WrongSender Device HostAddress -- expected, then actual
     | UnexpectedSockAddrType SockAddr
     | UnexpectedPort PortNumber
     | ProductLookupError ProductLookupError
@@ -61,8 +60,6 @@ instance Exception LifxError where
                     _ -> " (responses received from: " <> intercalate ", " (map showHostAddress as) <> ")"
         WrongPacketType expected actual ->
             "expected a packet of type " <> show expected <> ", but got one of type " <> show actual
-        WrongSender expected actual ->
-            "expected a response from " <> show expected <> ", but got one from " <> showHostAddress actual
         UnexpectedSockAddrType addr ->
             "unexpected socket address type: " <> show addr
         UnexpectedPort port ->
@@ -85,7 +82,6 @@ isTransient = \case
     BroadcastTimeout{} -> True
     DecodeFailure{} -> False
     WrongPacketType{} -> False
-    WrongSender{} -> False
     UnexpectedSockAddrType{} -> False
     UnexpectedPort{} -> False
     ProductLookupError{} -> False

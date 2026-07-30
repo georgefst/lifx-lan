@@ -70,7 +70,6 @@ import Control.Monad.State
 import Control.Monad.Trans.Maybe
 import Control.Monad.Writer
 import Data.Composition
-import Data.Either.Extra
 import Data.Fixed
 import Data.Foldable
 import Data.Functor
@@ -234,18 +233,29 @@ data LightState = LightState
 class MessageResult a where
     getSendResult :: (MonadLifxIO m) => Device -> m a
     default getSendResult :: (MonadLifxIO m, Response a) => Device -> m a
-    getSendResult receiver = untilJustM do
+    getSendResult receiver = do
         timeoutDuration <- nominalDiffTimeToInt @Micro . (.timeout) <$> getConfig
-        (bs, sender0) <- throwEither $ maybeToEither RecvTimeout <$> receiveMessage timeoutDuration (messageSize @a)
-        sender <- hostAddressFromSock sender0
-        res <- decodeMessage @a bs
-        when (isJust res && sender /= deviceAddress receiver) $ throwM $ WrongSender receiver sender
-        pure res
-      where
-        throwEither x =
-            x >>= \case
-                Left e -> throwM e
-                Right r -> pure r
+        t0 <- liftIO getCurrentTime
+        -- note that the timeout is a deadline for the whole wait, not for each individual `recv`:
+        -- we may go round this loop many times discarding packets we aren't interested in
+        let go = do
+                t <- liftIO getCurrentTime
+                let timeLeft = timeoutDuration - nominalDiffTimeToInt @Micro (diffUTCTime t t0)
+                if timeLeft <= 0
+                    then throwM RecvTimeout
+                    else
+                        receiveMessage timeLeft (messageSize @a) >>= \case
+                            Nothing -> throwM RecvTimeout
+                            Just (bs, sender0) -> do
+                                sender <- hostAddressFromSock sender0
+                                decodeMessage @a bs >>= \case
+                                    -- a `Nothing` is a sequence number mismatch, and a mismatched
+                                    -- sender means a reply to somebody else's message (we share a
+                                    -- socket, and sequence numbers wrap around at 256) - either way
+                                    -- it isn't ours, so ignore it and keep waiting
+                                    Just res | sender == deviceAddress receiver -> pure res
+                                    _ -> go
+        go
 
     broadcastAndGetResult ::
         (MonadLifxIO m) =>
