@@ -305,6 +305,7 @@ class Response a where
     messageSize :: Int
     getBody :: Get a
 
+-- | Messages with no response. Note that these are fire-and-forget - see 'sendMessage''.
 instance MessageResult () where
     getSendResult = const $ pure ()
     broadcastAndGetResult = const $ const $ (Map.empty <$) . broadcast
@@ -426,7 +427,9 @@ The methods all have defaults for the case where @m@ is a monad transformer over
 'MonadLifx', so instances for such types can be written with an empty body.
 -}
 class (MonadThrow m) => MonadLifx m where
-    -- | Send a message and wait for a response.
+    -- | Send a message and wait for a response, retrying if it doesn't arrive.
+    -- Note that a @'Message' ()@ has no response, so there is nothing to wait for or retry, and
+    -- delivery is not checked - see 'sendMessage''.
     sendMessage :: Device -> Message r -> m r
     default sendMessage :: (m ~ t n, MonadTrans t, MonadLifx n) => Device -> Message r -> m r
     sendMessage = lift .: sendMessage
@@ -710,6 +713,23 @@ decodeMessage bs = do
                         Right (_, _, res) -> pure $ Just res
   where
     throwDecodeFailure (bs', bo, e) = throwM $ DecodeFailure (BL.toStrict bs') bo e
+{- | Send a message, without waiting for anything.
+
+We never set @ack_required@ (the 'False' below). For a message which has a response, the response
+is itself proof of delivery, and 'getSendResult' waits for it. For a message which has no response
+(i.e. @'Message' ()@, the @Set*@ messages) this means we have no way to know whether it arrived:
+the send is fire-and-forget, and a lost packet is silent.
+
+This is a deliberate trade-off rather than an oversight. Making @Set@ reliable would mean setting
+@ack_required@, waiting for an @Acknowledgement@ (packet 45), and retrying if it doesn't come -
+which turns every state change into a round trip, and blocks the caller for a timeout whenever a
+bulb is unreachable. In practice sends to a device on the same LAN don't appear to go missing,
+whereas responses from bulbs occasionally do, so the cost isn't justified by the observed failures.
+
+If that turns out to be wrong, the fix is: thread a flag through to here, add an @Acknowledgement@
+response type for packet 45, and give @'MessageResult' ()@ a real 'getSendResult'. The retry logic
+in 'retryingTransient' would then cover @Set@ messages with no further changes.
+-}
 sendMessage' :: (MonadLifxIO m) => Bool -> HostAddress -> Message r -> m ()
 sendMessage' tagged receiver msg = do
     sock <- getSocket
