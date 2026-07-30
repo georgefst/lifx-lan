@@ -9,6 +9,7 @@ import Control.Monad.State
 import Data.Binary.Get
 import Data.IORef
 import Data.List
+import Data.Time (NominalDiffTime)
 import Data.Word
 import Network.Socket
 import Numeric (showHex)
@@ -92,11 +93,28 @@ isTransient = \case
 showHostAddress :: HostAddress -> String
 showHostAddress ha = let (a, b, c, d) = hostAddressToTuple ha in intercalate "." $ map show [a, b, c, d]
 
+-- | Options for 'Lifx.Lan.runLifxT'. Use 'defaultLifxConfig' and override the fields you care about.
+data LifxConfig = LifxConfig
+    { timeout :: NominalDiffTime
+    -- ^ How long to wait for a response to a message before giving up.
+    , port :: Maybe PortNumber
+    -- ^ A port on which to receive messages. This could be useful when using a firewall which
+    -- blocks most ports. 'Nothing' uses 'defaultPort'.
+    }
+    deriving (Eq, Ord, Show, Generic)
+
+defaultLifxConfig :: LifxConfig
+defaultLifxConfig =
+    LifxConfig
+        { timeout = 5
+        , port = Nothing
+        }
+
 -- | A monad for sending and receiving LIFX messages.
 class (MonadIO m, MonadThrow m) => MonadLifxIO m where
     getSocket :: m Socket
     getSource :: m Word32
-    getTimeout :: m Int
+    getConfig :: m LifxConfig
     incrementCounter :: m ()
     getCounter :: m Word8
     handleOldMessage ::
@@ -114,14 +132,14 @@ class (MonadIO m, MonadThrow m) => MonadLifxIO m where
 instance (MonadIO m, MonadThrow m) => MonadLifxIO (LifxT m) where
     getSocket = LifxT $ asks (.socket)
     getSource = LifxT $ asks (.source)
-    getTimeout = LifxT $ asks (.timeout)
+    getConfig = LifxT $ asks (.config)
     getCounter = LifxT $ asks (.counter) >>= liftIO . readIORef
     incrementCounter = LifxT $ asks (.counter) >>= liftIO . flip modifyIORef' succ'
 
 data LifxEnv = LifxEnv
     { socket :: Socket
     , source :: Word32
-    , timeout :: Int
+    , config :: LifxConfig
     , counter :: IORef Word8
     -- ^ Deliberately mutable, rather than a 'StateT': if a send throws, we must not roll the
     -- counter back, or the next message would reuse a sequence number that a late reply to the

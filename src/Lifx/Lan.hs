@@ -30,6 +30,8 @@ module Lifx.Lan (
     runLifx,
     LifxT,
     runLifxT,
+    LifxConfig (..),
+    defaultLifxConfig,
     LifxError (..),
     isTransient,
     ProductLookupError (..),
@@ -233,7 +235,7 @@ class MessageResult a where
     getSendResult :: (MonadLifxIO m) => Device -> m a
     default getSendResult :: (MonadLifxIO m, Response a) => Device -> m a
     getSendResult receiver = untilJustM do
-        timeoutDuration <- getTimeout
+        timeoutDuration <- nominalDiffTimeToInt @Micro . (.timeout) <$> getConfig
         (bs, sender0) <- throwEither $ maybeToEither RecvTimeout <$> receiveMessage timeoutDuration (messageSize @a)
         sender <- hostAddressFromSock sender0
         res <- decodeMessage @a bs
@@ -260,7 +262,7 @@ class MessageResult a where
         Message r ->
         m (Map Device (NonEmpty b))
     broadcastAndGetResult filter' maybeFinished msg = do
-        timeoutDuration <- getTimeout
+        timeoutDuration <- nominalDiffTimeToInt @Micro . (.timeout) <$> getConfig
         broadcast msg
         t0 <- liftIO getCurrentTime
         fmap (Map.mapKeysMonotonic Device) . flip execStateT Map.empty . untilM $
@@ -377,41 +379,33 @@ msgResWitness f m = case m of
 -- | A simple implementation of 'MonadLifx'.
 type Lifx = LifxT IO
 
-{- | Note that this throws 'LifxError's as exceptions, sets timeout to 5 seconds, and uses dynamic ports.
-Use 'runLifxT' for more control.
--}
+-- | 'runLifxT' with 'defaultLifxConfig'.
 runLifx :: Lifx a -> IO a
-runLifx = runLifxT 5_000_000 Nothing >=> either throwM pure
+runLifx = runLifxT defaultLifxConfig
 
-runLifxT ::
-    (MonadIO m, MonadMask m) =>
-    -- | Timeout for waiting for message responses, in microseconds.
-    Int ->
-    -- | A port on which to receive messages. This could be useful when using a firewall which blocks most ports.
-    -- 'Nothing' uses 'defaultPort'.
-    Maybe PortNumber ->
-    LifxT m a ->
-    m (Either LifxError a)
-runLifxT timeoutDuration port x =
-    try $
-        bracket
-            ( liftIO do
-                sock <- socket AF_INET Datagram defaultProtocol
-                setSocketOption sock Broadcast 1
-                bind sock $ SockAddrInet (fromMaybe defaultPort port) 0
-                pure sock
-            )
-            (liftIO . close)
-            \sock -> do
-                source <-
-                    liftIO
-                        . untilJustM
-                        $ randomIO <&> \case
-                            -- 0 and 1 cause problems on old firmware: https://lan.developer.lifx.com/docs/packet-contents#frame-header
-                            n | n > 1 -> Just n
-                            _ -> Nothing
-                counter <- liftIO $ newIORef 0
-                runLifxEnv LifxEnv{socket = sock, source, timeout = timeoutDuration, counter} x
+{- | Run a LIFX action. 'LifxError's are thrown as exceptions - catch them with
+'Control.Monad.Catch.try' or similar if you want to handle them.
+-}
+runLifxT :: (MonadIO m, MonadMask m) => LifxConfig -> LifxT m a -> m a
+runLifxT config x =
+    bracket
+        ( liftIO do
+            sock <- socket AF_INET Datagram defaultProtocol
+            setSocketOption sock Broadcast 1
+            bind sock $ SockAddrInet (fromMaybe defaultPort config.port) 0
+            pure sock
+        )
+        (liftIO . close)
+        \sock -> do
+            source <-
+                liftIO
+                    . untilJustM
+                    $ randomIO <&> \case
+                        -- 0 and 1 cause problems on old firmware: https://lan.developer.lifx.com/docs/packet-contents#frame-header
+                        n | n > 1 -> Just n
+                        _ -> Nothing
+            counter <- liftIO $ newIORef 0
+            runLifxEnv LifxEnv{socket = sock, source, config, counter} x
 
 {- | A monad in which we can talk to LIFX devices.
 
@@ -456,6 +450,7 @@ instance (MonadIO m, MonadThrow m) => MonadLifx (LifxT m) where
             checkPort port
             pure . guard $ service == ServiceUDP
         p = nDevices <&> \n -> (>= n) . length
+
 -- these all just use the class defaults - see 'MonadLifx'
 instance (MonadLifx m) => MonadLifx (MaybeT m)
 instance (MonadLifx m) => MonadLifx (ExceptT e m)
