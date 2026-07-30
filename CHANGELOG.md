@@ -1,5 +1,46 @@
 # Revision history for lifx-lan
 
+## 0.9 -- unreleased
+
+### Error handling
+
+- `LifxError` and `ProductLookupError` are now `Exception`s, with useful `displayException`s, and
+  are thrown rather than being returned in a dedicated error channel.
+- Add `isTransient`, distinguishing dropped packets (normal, and worth retrying) from errors which
+  indicate a misbehaving device or a bug.
+- Messages which expect a response are now retried when it doesn't arrive, and device discovery is
+  retried when it doesn't find the requested number of devices. Configure via `LifxConfig`'s
+  `retries` field; set it to `0` for the old behaviour.
+- Fix `getSendResult` applying its timeout per `recv` rather than to the wait as a whole, which
+  meant a steady trickle of unrelated packets could stop it ever timing out.
+- Remove `WrongSender`. A response whose sequence number matched but whose sender didn't used to be
+  an error; it is now ignored, like a sequence number mismatch, since sharing one socket across
+  devices makes it a normal thing to see.
+
+### Monad stack
+
+- `LifxT` is now a plain `ReaderT`, rather than `StateT` over `ReaderT` over `ExceptT`. It
+  therefore commutes with other transformers, and derives `MonadState`, `MonadError`, `MonadThrow`,
+  `MonadCatch` and `MonadMask` from the underlying monad.
+- Remove the `MonadError (Either e LifxError) (LifxT m)` instance, which no longer has any reason
+  to exist.
+- `MonadLifx` loses `MonadLifxError`, `lifxThrow` and `liftProductLookupError`, gaining a
+  `MonadThrow` superclass instead. Its remaining methods have defaults for monad transformers, so
+  instances for these can now be written with an empty body.
+- `MonadLifxIO` gains a `MonadCatch` superclass, loses `lifxThrowIO`, and replaces `getTimeout`
+  with `getConfig`.
+- `Mock` sheds its `ExceptT` similarly, and `MockError` loses `MockProductLookupError`, since
+  `getProductInfo` now always throws `LifxError`.
+
+### Other
+
+- `runLifxT` takes a `LifxConfig` record instead of positional arguments, and returns `m a` rather
+  than `m (Either LifxError a)`. The timeout is a `NominalDiffTime` rather than a bare `Int` of
+  microseconds.
+- Add a port option to `LifxConfig`, useful with a firewall which blocks most ports.
+- Close the socket when a run fails, rather than leaking it.
+- Support GHC 9.14.
+
 ## 0.8.3 -- 2024-09-03
 - Update to latest products list.
 
