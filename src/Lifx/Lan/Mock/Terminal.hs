@@ -5,7 +5,7 @@
 module Lifx.Lan.Mock.Terminal (Mock, MockError, runMock, runMockFull, MockState (MockState)) where
 
 import Control.Monad
-import Control.Monad.Except
+import Control.Monad.Catch
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Colour.RGBSpace
@@ -29,12 +29,15 @@ import System.Console.ANSI hiding (SetColor)
 import Lifx.Internal.Colour
 import Lifx.Lan
 
-newtype Mock a = Mock (StateT (Map Device MockState) (ReaderT [Device] (ExceptT MockError IO)) a)
+newtype Mock a = Mock (StateT (Map Device MockState) (ReaderT [Device] IO) a)
     deriving newtype
         ( Functor
         , Applicative
         , Monad
         , MonadIO
+        , MonadThrow
+        , MonadCatch
+        , MonadMask
         )
 
 data MockState = MockState
@@ -75,7 +78,7 @@ runMock ds m = do
 -- | More general version of `runMock`, which allows specifying extra information about devices.
 runMockFull :: [(Device, MockState)] -> Mock a -> IO (Either MockError a)
 runMockFull ds (Mock x) =
-    runExceptT
+    try
         . flip
             runReaderT
             (fst <$> ds)
@@ -84,17 +87,21 @@ runMockFull ds (Mock x) =
             (Map.fromList ds)
         $ x
 
+{- | Problems which are specific to the mock, i.e. which could not arise when talking to real
+hardware. Note that `getProductInfo` still throws a `LifxError`, since a failure to find a device
+in the product registry is not mock-specific.
+-}
 data MockError
     = MockNoSuchDevice Device
-    | MockProductLookupError ProductLookupError
     | MockDataNotProvided
     deriving (Show)
 
-instance MonadLifx Mock where
-    type MonadLifxError Mock = MockError
-    lifxThrow = Mock . throwError
-    liftProductLookupError = MockProductLookupError
+instance Exception MockError where
+    displayException = \case
+        MockNoSuchDevice d -> "no such mock device: " <> show d
+        MockDataNotProvided -> "the mock was not given the data needed to respond to this message"
 
+instance MonadLifx Mock where
     sendMessage d (m :: Message r) = do
         s <- lookupDevice d
         r <- Mock case m of
@@ -118,9 +125,9 @@ instance MonadLifx Mock where
         liftIO $ putStrLn ""
         pure r
       where
-        lookupDevice = maybe (lifxThrow $ MockNoSuchDevice d) pure <=< Mock . gets . Map.lookup
-        whenProvided :: Maybe r -> StateT (Map Device MockState) (ReaderT [Device] (ExceptT MockError IO)) r
-        whenProvided = maybe (throwError MockDataNotProvided) pure
+        lookupDevice = maybe (throwM $ MockNoSuchDevice d) pure <=< Mock . gets . Map.lookup
+        whenProvided :: Maybe r -> StateT (Map Device MockState) (ReaderT [Device] IO) r
+        whenProvided = maybe (throwM MockDataNotProvided) pure
         convertPower = fromIntegral . fromEnum
         mkSGR s = [SetRGBColor Background . uncurryRGB sRGB $ hsbkToRgb s.hsbk | s.power /= 0]
     broadcastMessage m = Mock ask >>= traverse \d -> (d,) <$> sendMessage d m
