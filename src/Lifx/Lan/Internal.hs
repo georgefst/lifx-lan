@@ -100,6 +100,10 @@ data LifxConfig = LifxConfig
     , port :: Maybe PortNumber
     -- ^ A port on which to receive messages. This could be useful when using a firewall which
     -- blocks most ports. 'Nothing' uses 'defaultPort'.
+    , retries :: Word
+    -- ^ How many times to retry an operation which fails with a transient error - see
+    -- 'isTransient'. Note that each attempt can take up to @timeout@, so the worst case for an
+    -- unresponsive device is @(retries + 1) * timeout@.
     }
     deriving (Eq, Ord, Show, Generic)
 
@@ -108,10 +112,21 @@ defaultLifxConfig =
     LifxConfig
         { timeout = 5
         , port = Nothing
+        , retries = 2
         }
 
+{- | Retry an action for as long as it fails with a transient error, up to @retries@ extra attempts.
+
+Note that we deliberately don't sleep between attempts: for the errors which are worth retrying at
+all, we have by definition just spent a whole @timeout@ waiting.
+-}
+retryingTransient :: (MonadLifxIO m) => m a -> m a
+retryingTransient x = getConfig >>= go . (.retries)
+  where
+    go n = x `catch` \e -> if n > 0 && isTransient e then go (n - 1) else throwM e
+
 -- | A monad for sending and receiving LIFX messages.
-class (MonadIO m, MonadThrow m) => MonadLifxIO m where
+class (MonadIO m, MonadCatch m) => MonadLifxIO m where
     getSocket :: m Socket
     getSource :: m Word32
     getConfig :: m LifxConfig
@@ -129,7 +144,7 @@ class (MonadIO m, MonadThrow m) => MonadLifxIO m where
         m ()
     handleOldMessage _ _ _ _ = pure ()
 
-instance (MonadIO m, MonadThrow m) => MonadLifxIO (LifxT m) where
+instance (MonadIO m, MonadCatch m) => MonadLifxIO (LifxT m) where
     getSocket = LifxT $ asks (.socket)
     getSource = LifxT $ asks (.source)
     getConfig = LifxT $ asks (.config)

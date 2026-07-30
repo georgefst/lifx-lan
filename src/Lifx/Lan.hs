@@ -433,18 +433,24 @@ class (MonadThrow m) => MonadLifx m where
     default discoverDevices :: (m ~ t n, MonadTrans t, MonadLifx n) => Maybe Int -> m [Device]
     discoverDevices = lift . discoverDevices
 
-instance (MonadIO m, MonadThrow m) => MonadLifx (LifxT m) where
+instance (MonadIO m, MonadCatch m) => MonadLifx (LifxT m) where
     sendMessage receiver = msgResWitness \msg -> do
+        -- note that the counter is incremented outside the retry, so that a resend is byte-for-byte
+        -- the same packet - see https://lan.developer.lifx.com/docs/packet-contents#sequence
         incrementCounter
-        sendMessage' True receiver.unwrap msg
-        getSendResult receiver
+        retryingTransient do
+            sendMessage' True receiver.unwrap msg
+            getSendResult receiver
 
+    -- no point retrying: with no predicate to satisfy, this can't time out - it just returns
+    -- however many responses happened to arrive
     broadcastMessage =
         msgResWitness $
             fmap (concatMap (\(a, xs) -> map (a,) $ toList xs) . Map.toList)
                 . broadcastAndGetResult (const $ pure . pure) Nothing
 
-    discoverDevices nDevices = Map.keys <$> broadcastAndGetResult f p GetService
+    -- unlike `sendMessage`, a retry here is a fresh broadcast, discarding any partial results
+    discoverDevices nDevices = Map.keys <$> retryingTransient (broadcastAndGetResult f p GetService)
       where
         f _addr StateService{..} = do
             checkPort port
