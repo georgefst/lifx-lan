@@ -72,12 +72,12 @@ import Data.Either.Extra
 import Data.Fixed
 import Data.Foldable
 import Data.Functor
+import Data.IORef
 import Data.Maybe
 import Data.Time
 import Data.Time.Clock.POSIX
 import Data.Word
 import Network.Socket
-import System.IO.Error
 
 import Data.Binary (Binary)
 import Data.Binary qualified as Binary
@@ -237,12 +237,12 @@ class MessageResult a where
         (bs, sender0) <- throwEither $ maybeToEither RecvTimeout <$> receiveMessage timeoutDuration (messageSize @a)
         sender <- hostAddressFromSock sender0
         res <- decodeMessage @a bs
-        when (isJust res && sender /= deviceAddress receiver) $ lifxThrowIO $ WrongSender receiver sender
+        when (isJust res && sender /= deviceAddress receiver) $ throwM $ WrongSender receiver sender
         pure res
       where
         throwEither x =
             x >>= \case
-                Left e -> lifxThrowIO e
+                Left e -> throwM e
                 Right r -> pure r
 
     broadcastAndGetResult ::
@@ -284,7 +284,7 @@ class MessageResult a where
                                 Nothing -> do
                                     -- if we were waiting for a predicate to pass, then we've timed out
                                     when (isJust maybeFinished) $
-                                        lift . lifxThrowIO . BroadcastTimeout
+                                        lift . throwM . BroadcastTimeout
                                             =<< gets Map.keys
                                     pure True
 
@@ -377,14 +377,11 @@ msgResWitness f m = case m of
 -- | A simple implementation of 'MonadLifx'.
 type Lifx = LifxT IO
 
-{- | Note that this throws 'LifxError's as 'IOException's, sets timeout to 5 seconds, and uses dynamic ports.
+{- | Note that this throws 'LifxError's as exceptions, sets timeout to 5 seconds, and uses dynamic ports.
 Use 'runLifxT' for more control.
 -}
 runLifx :: Lifx a -> IO a
-runLifx m =
-    runLifxT 5_000_000 Nothing m >>= \case
-        Left e -> ioError $ mkIOError userErrorType ("LIFX LAN: " <> show e) Nothing Nothing
-        Right x -> pure x
+runLifx = runLifxT 5_000_000 Nothing >=> either throwM pure
 
 runLifxT ::
     (MonadIO m, MonadMask m) =>
@@ -395,24 +392,26 @@ runLifxT ::
     Maybe PortNumber ->
     LifxT m a ->
     m (Either LifxError a)
-runLifxT timeoutDuration port (LifxT x) =
-    bracket
-        ( liftIO do
-            sock <- socket AF_INET Datagram defaultProtocol
-            setSocketOption sock Broadcast 1
-            bind sock $ SockAddrInet (fromMaybe defaultPort port) 0
-            pure sock
-        )
-        (liftIO . close)
-        \sock -> do
-            source <-
-                liftIO
-                    . untilJustM
-                    $ randomIO <&> \case
-                        -- 0 and 1 cause problems on old firmware: https://lan.developer.lifx.com/docs/packet-contents#frame-header
-                        n | n > 1 -> Just n
-                        _ -> Nothing
-            runExceptT $ runReaderT (evalStateT x 0) (sock, source, timeoutDuration)
+runLifxT timeoutDuration port x =
+    try $
+        bracket
+            ( liftIO do
+                sock <- socket AF_INET Datagram defaultProtocol
+                setSocketOption sock Broadcast 1
+                bind sock $ SockAddrInet (fromMaybe defaultPort port) 0
+                pure sock
+            )
+            (liftIO . close)
+            \sock -> do
+                source <-
+                    liftIO
+                        . untilJustM
+                        $ randomIO <&> \case
+                            -- 0 and 1 cause problems on old firmware: https://lan.developer.lifx.com/docs/packet-contents#frame-header
+                            n | n > 1 -> Just n
+                            _ -> Nothing
+                counter <- liftIO $ newIORef 0
+                runLifxEnv LifxEnv{socket = sock, source, timeout = timeoutDuration, counter} x
 
 class (Monad m) => MonadLifx m where
     -- | The type of errors associated with 'm'.
@@ -432,9 +431,9 @@ class (Monad m) => MonadLifx m where
     -- otherwise just keep waiting until timeout.
     discoverDevices :: Maybe Int -> m [Device]
 
-instance (MonadIO m) => MonadLifx (LifxT m) where
+instance (MonadIO m, MonadThrow m) => MonadLifx (LifxT m) where
     type MonadLifxError (LifxT m) = LifxError
-    lifxThrow = lifxThrowIO
+    lifxThrow = throwM
     liftProductLookupError = ProductLookupError
 
     sendMessage receiver = msgResWitness \msg -> do
@@ -703,7 +702,7 @@ untilM :: (Monad m) => m Bool -> m ()
 untilM = whileM . fmap not
 
 checkPort :: (MonadLifxIO f) => PortNumber -> f ()
-checkPort port = when (port /= lifxPort) . lifxThrowIO $ UnexpectedPort port
+checkPort port = when (port /= lifxPort) . throwM $ UnexpectedPort port
 
 -- these helpers are all used by 'sendMessage' and 'broadcastMessage'
 decodeMessage :: forall b m. (Response b, MonadLifxIO m) => BS.ByteString -> m (Maybe b) -- Nothing means counter mismatch
@@ -715,13 +714,13 @@ decodeMessage bs = do
             if sequenceCounter /= counter
                 then handleOldMessage counter sequenceCounter packetType bs' >> pure Nothing
                 else do
-                    when (packetType /= expectedPacketType @b) . lifxThrowIO $
+                    when (packetType /= expectedPacketType @b) . throwM $
                         WrongPacketType (expectedPacketType @b) packetType
                     case runGetOrFail getBody bs' of
                         Left e -> throwDecodeFailure e
                         Right (_, _, res) -> pure $ Just res
   where
-    throwDecodeFailure (bs', bo, e) = lifxThrowIO $ DecodeFailure (BL.toStrict bs') bo e
+    throwDecodeFailure (bs', bo, e) = throwM $ DecodeFailure (BL.toStrict bs') bo e
 sendMessage' :: (MonadLifxIO m) => Bool -> HostAddress -> Message r -> m ()
 sendMessage' tagged receiver msg = do
     sock <- getSocket
@@ -735,7 +734,7 @@ sendMessage' tagged receiver msg = do
 hostAddressFromSock :: (MonadLifxIO m) => SockAddr -> m HostAddress
 hostAddressFromSock = \case
     SockAddrInet port ha -> checkPort port >> pure ha
-    addr -> lifxThrowIO $ UnexpectedSockAddrType addr
+    addr -> throwM $ UnexpectedSockAddrType addr
 receiveMessage :: (MonadLifxIO m) => Int -> Int -> m (Maybe (BS.ByteString, SockAddr))
 receiveMessage t size = do
     sock <- getSocket

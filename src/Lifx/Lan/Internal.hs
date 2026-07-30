@@ -2,13 +2,13 @@
 
 module Lifx.Lan.Internal where
 
-import Control.Exception (Exception (..))
+import Control.Monad.Catch
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Binary.Get
+import Data.IORef
 import Data.List
-import Data.Tuple.Extra
 import Data.Word
 import Network.Socket
 import Numeric (showHex)
@@ -93,13 +93,12 @@ showHostAddress :: HostAddress -> String
 showHostAddress ha = let (a, b, c, d) = hostAddressToTuple ha in intercalate "." $ map show [a, b, c, d]
 
 -- | A monad for sending and receiving LIFX messages.
-class (MonadIO m) => MonadLifxIO m where
+class (MonadIO m, MonadThrow m) => MonadLifxIO m where
     getSocket :: m Socket
     getSource :: m Word32
     getTimeout :: m Int
     incrementCounter :: m ()
     getCounter :: m Word8
-    lifxThrowIO :: LifxError -> m a
     handleOldMessage ::
         -- | expected counter value
         Word8 ->
@@ -112,50 +111,54 @@ class (MonadIO m) => MonadLifxIO m where
         m ()
     handleOldMessage _ _ _ _ = pure ()
 
-instance (MonadIO m) => MonadLifxIO (LifxT m) where
-    getSocket = LifxT $ asks fst3
-    getSource = LifxT $ asks snd3
-    getTimeout = LifxT $ asks thd3
-    incrementCounter = LifxT $ modify succ'
-    getCounter = LifxT $ gets id
-    lifxThrowIO = LifxT . throwError
+instance (MonadIO m, MonadThrow m) => MonadLifxIO (LifxT m) where
+    getSocket = LifxT $ asks (.socket)
+    getSource = LifxT $ asks (.source)
+    getTimeout = LifxT $ asks (.timeout)
+    getCounter = LifxT $ asks (.counter) >>= liftIO . readIORef
+    incrementCounter = LifxT $ asks (.counter) >>= liftIO . flip modifyIORef' succ'
 
-newtype LifxT m a = LifxT
-    { unwrap ::
-        StateT
-            Word8
-            ( ReaderT
-                (Socket, Word32, Int)
-                ( ExceptT
-                    LifxError
-                    m
-                )
-            )
-            a
+data LifxEnv = LifxEnv
+    { socket :: Socket
+    , source :: Word32
+    , timeout :: Int
+    , counter :: IORef Word8
+    -- ^ Deliberately mutable, rather than a 'StateT': if a send throws, we must not roll the
+    -- counter back, or the next message would reuse a sequence number that a late reply to the
+    -- failed one could still match.
     }
+
+{- | The concrete implementation of 'MonadLifx'.
+
+Note that this is a plain 'ReaderT', so it commutes with everything, and 'LifxError's are thrown
+as exceptions rather than living in a dedicated error channel. This means that a @LifxT@ layer no
+longer interferes with the caller's own 'MonadError'/'MonadState' instances.
+-}
+newtype LifxT m a = LifxT {unwrap :: ReaderT LifxEnv m a}
     deriving newtype
         ( Functor
         , Applicative
         , Monad
         , MonadIO
+        , MonadFail
+        , MonadThrow
+        , MonadCatch
+        , MonadMask
         )
 
+deriving newtype instance (MonadState s m) => MonadState s (LifxT m)
+deriving newtype instance (MonadError e m) => MonadError e (LifxT m)
+
 instance MonadTrans LifxT where
-    lift = LifxT . lift . lift . lift
+    lift = LifxT . lift
+
+-- | Note that this passes through to @m@ - it does not expose the internal 'LifxEnv'.
 instance (MonadReader s m) => MonadReader s (LifxT m) where
     ask = lift ask
-    local f m = LifxT $ StateT \s -> ReaderT \e ->
-        ExceptT $ local f $ unLifx e s m
-instance (MonadState s m) => MonadState s (LifxT m) where
-    state = lift . state
-instance (MonadError e m) => MonadError (Either e LifxError) (LifxT m) where
-    throwError = either (lift . throwError @e @m) (LifxT . throwError)
-    catchError m h = LifxT $ StateT \s -> ReaderT \e -> ExceptT do
-        (m', s'') <- either ((,s) . h . Right) (first pure) <$> unLifx e s m
-        catchError @e @m (unLifx e s'' m') (unLifx e s'' . h . Left)
+    local f (LifxT (ReaderT g)) = LifxT $ ReaderT $ local f . g
 
-unLifx :: (Socket, Word32, Int) -> Word8 -> LifxT m a -> m (Either LifxError (a, Word8))
-unLifx e s = runExceptT . flip runReaderT e . flip runStateT s . (.unwrap)
+runLifxEnv :: LifxEnv -> LifxT m a -> m a
+runLifxEnv e = flip runReaderT e . (.unwrap)
 
 {- Util -}
 
