@@ -2,6 +2,7 @@
 
 module Lifx.Lan.Internal where
 
+import Control.Exception (Exception (..))
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
@@ -10,6 +11,7 @@ import Data.List
 import Data.Tuple.Extra
 import Data.Word
 import Network.Socket
+import Numeric (showHex)
 
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
@@ -22,7 +24,7 @@ newtype Device = Device {unwrap :: HostAddress}
     deriving newtype (Eq, Ord)
 
 instance Show Device where
-    show (Device ha) = let (a, b, c, d) = hostAddressToTuple ha in intercalate "." $ map show [a, b, c, d]
+    show (Device ha) = showHostAddress ha
 
 -- | A colour. See https://lan.developer.lifx.com/docs/representing-color-with-hsbk.
 data HSBK = HSBK
@@ -44,6 +46,51 @@ data LifxError
     | UnexpectedPort PortNumber
     | ProductLookupError ProductLookupError
     deriving (Eq, Ord, Show, Generic)
+
+instance Exception LifxError where
+    displayException = \case
+        DecodeFailure bs bo e ->
+            "failed to decode response at byte " <> show bo <> ": " <> e <> " (in " <> showBytes bs <> ")"
+        RecvTimeout ->
+            "timed out waiting for a response from device"
+        BroadcastTimeout as ->
+            "timed out waiting for responses to a broadcast"
+                <> case as of
+                    [] -> " (no devices responded)"
+                    _ -> " (responses received from: " <> intercalate ", " (map showHostAddress as) <> ")"
+        WrongPacketType expected actual ->
+            "expected a packet of type " <> show expected <> ", but got one of type " <> show actual
+        WrongSender expected actual ->
+            "expected a response from " <> show expected <> ", but got one from " <> showHostAddress actual
+        UnexpectedSockAddrType addr ->
+            "unexpected socket address type: " <> show addr
+        UnexpectedPort port ->
+            "unexpected port: " <> show port
+        ProductLookupError e ->
+            "failed to look up product info: " <> displayException e
+      where
+        showBytes = unwords . map (\w -> let s = showHex w "" in if length s == 1 then '0' : s else s) . BS.unpack
+
+{- | Is this error likely to be transient, such that simply retrying the same operation might succeed?
+
+The LIFX LAN protocol runs over UDP with no delivery guarantees, so dropped packets are a normal
+part of operation, rather than a sign that anything is actually wrong. Everything else in
+'LifxError' indicates either a misbehaving device or a bug (in this library or in the caller),
+and retrying will not help.
+-}
+isTransient :: LifxError -> Bool
+isTransient = \case
+    RecvTimeout -> True
+    BroadcastTimeout{} -> True
+    DecodeFailure{} -> False
+    WrongPacketType{} -> False
+    WrongSender{} -> False
+    UnexpectedSockAddrType{} -> False
+    UnexpectedPort{} -> False
+    ProductLookupError{} -> False
+
+showHostAddress :: HostAddress -> String
+showHostAddress ha = let (a, b, c, d) = hostAddressToTuple ha in intercalate "." $ map show [a, b, c, d]
 
 -- | A monad for sending and receiving LIFX messages.
 class (MonadIO m) => MonadLifxIO m where

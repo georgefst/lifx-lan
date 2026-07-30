@@ -1,6 +1,7 @@
 module Lifx.Internal.ProductInfoMap where
 
 import Control.Applicative
+import Control.Exception (Exception (..))
 import Data.Functor
 import Data.Maybe
 import Data.Tuple.Extra
@@ -37,6 +38,11 @@ data ProductLookupError
     = UnknownVendorId Word32
     | UnknownProductId Word32
     deriving (Eq, Ord, Show, Generic)
+
+instance Exception ProductLookupError where
+    displayException = \case
+        UnknownVendorId v -> "unknown LIFX vendor id: " <> show v
+        UnknownProductId p -> "unknown LIFX product id: " <> show p
 
 productLookup :: Word32 -> Word32 -> Word16 -> Word16 -> Either ProductLookupError Product
 productLookup vendor prod versionMinor versionMajor =

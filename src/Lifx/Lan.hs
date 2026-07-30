@@ -31,6 +31,7 @@ module Lifx.Lan (
     LifxT,
     runLifxT,
     LifxError (..),
+    isTransient,
     ProductLookupError (..),
     MonadLifx (..),
     sendMessageAndWait,
