@@ -234,7 +234,7 @@ class MessageResult a where
     getSendResult :: (MonadLifxIO m) => Device -> m a
     default getSendResult :: (MonadLifxIO m, Response a) => Device -> m a
     getSendResult receiver = do
-        timeoutDuration <- nominalDiffTimeToInt @Micro . (.timeout) <$> getConfig
+        timeoutDuration <- nominalDiffTimeToInt @Micro . (.messageTimeout) <$> getConfig
         t0 <- liftIO getCurrentTime
         -- note that the timeout is a deadline for the whole wait, not for each individual `recv`:
         -- we may go round this loop many times discarding packets we aren't interested in
@@ -272,7 +272,7 @@ class MessageResult a where
         Message r ->
         m (Map Device (NonEmpty b))
     broadcastAndGetResult filter' maybeFinished msg = do
-        timeoutDuration <- nominalDiffTimeToInt @Micro . (.timeout) <$> getConfig
+        timeoutDuration <- nominalDiffTimeToInt @Micro . (.broadcastTimeout) <$> getConfig
         broadcast msg
         t0 <- liftIO getCurrentTime
         fmap (Map.mapKeysMonotonic Device) . flip execStateT Map.empty . untilM $

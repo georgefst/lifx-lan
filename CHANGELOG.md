@@ -35,8 +35,15 @@
 ### Other
 
 - `runLifxT` takes a `LifxConfig` record instead of positional arguments, and returns `m a` rather
-  than `m (Either LifxError a)`. The timeout is a `NominalDiffTime` rather than a bare `Int` of
+  than `m (Either LifxError a)`. Timeouts are `NominalDiffTime`s rather than bare `Int`s of
   microseconds.
+- Split the single timeout in two, since it was being used for two quite different jobs.
+  `messageTimeout` is a failure deadline for a message to one device, which in normal operation
+  never elapses, and so wants to be around the round trip time to a device. `broadcastTimeout` is
+  how long to spend collecting responses to a broadcast; since there's no way to know how many
+  devices are out there, it *always* elapses in full, so setting it too low silently finds fewer
+  devices rather than reporting an error. Conflating the two meant you had to pick a single value
+  which was necessarily far too long for one job or far too short for the other.
 - Add a port option to `LifxConfig`, useful with a firewall which blocks most ports.
 - Close the socket when a run fails, rather than leaking it.
 - Support GHC 9.14.

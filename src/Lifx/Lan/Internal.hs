@@ -89,24 +89,37 @@ isTransient = \case
 showHostAddress :: HostAddress -> String
 showHostAddress ha = let (a, b, c, d) = hostAddressToTuple ha in intercalate "." $ map show [a, b, c, d]
 
--- | Options for 'Lifx.Lan.runLifxT'. Use 'defaultLifxConfig' and override the fields you care about.
+{- | Options for 'Lifx.Lan.runLifxT'. Use 'defaultLifxConfig' and override the fields you care about.
+
+Note that the two timeouts mean quite different things, and belong at quite different orders of
+magnitude - see each field.
+-}
 data LifxConfig = LifxConfig
-    { timeout :: NominalDiffTime
-    -- ^ How long to wait for a response to a message before giving up.
+    { messageTimeout :: NominalDiffTime
+    -- ^ How long to wait for a response to a message sent to a particular device, before giving
+    -- up. This is a deadline on a failure: in normal operation it never elapses, so it wants to be
+    -- not much more than the round trip time to a device on your network.
+    , broadcastTimeout :: NominalDiffTime
+    -- ^ How long to spend collecting responses to a broadcast (see 'Lifx.Lan.broadcastMessage' and
+    -- 'Lifx.Lan.discoverDevices'). Unlike 'messageTimeout' this is not a failure deadline but a
+    -- dwell time: since there is no way to know how many devices are out there, we always wait the
+    -- full duration. Setting it too low doesn't cause an error, it just silently finds fewer
+    -- devices, so it wants to be comfortably longer than 'messageTimeout'.
     , port :: Maybe PortNumber
     -- ^ A port on which to receive messages. This could be useful when using a firewall which
     -- blocks most ports. 'Nothing' uses 'defaultPort'.
     , retries :: Word
     -- ^ How many times to retry an operation which fails with a transient error - see
-    -- 'isTransient'. Note that each attempt can take up to @timeout@, so the worst case for an
-    -- unresponsive device is @(retries + 1) * timeout@.
+    -- 'isTransient'. Note that each attempt can take up to the relevant timeout, so the worst case
+    -- for an unresponsive device is @(retries + 1) * messageTimeout@.
     }
     deriving (Eq, Ord, Show, Generic)
 
 defaultLifxConfig :: LifxConfig
 defaultLifxConfig =
     LifxConfig
-        { timeout = 5
+        { messageTimeout = 1
+        , broadcastTimeout = 2
         , port = Nothing
         , retries = 2
         }
